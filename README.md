@@ -166,4 +166,21 @@
 
 ---
 
+## 8. 可复用组件库（引用，单点维护）
+
+> 规范的落地常伴随可复用组件。**独立组件库保持独立仓库维护，不合并进本文档**（本文档只放规范、不放源码）。用到的组件在此登记引用，开新项目时从这里找。
+
+### 玻璃拟态按钮组件库 GlassButtons
+- **仓库**：https://github.com/GJR787878/GlassButtons
+- **定位**：苹果风格毛玻璃半透明按钮组件库（抽自 RamStatusBar），纯 Java + Android framework，无第三方依赖。
+- **组件**：`GlassCapsuleButton` / `GlassRadioButton` / `GlassNavBar` / `GlassButtonDrawable` / `GlassButtonStyle`。
+- **圆角规范对应**：组件默认 28dp；接入时按项目设定——**DRS 用 24dp、RSB 用 28dp**（构造参数或 `app:glassCornerRadius`）。
+- **两种接入方式**：
+  1. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
+  2. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
+- **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
+- 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
+
+---
+
 > 维护提示：本文件是**通用参照模板**，随实战经验持续沉淀。新增经验时保持「结论先行 + 表格 + 占位符 + 文件路径」的结构，便于后续项目与 AI 快速读取执行。
