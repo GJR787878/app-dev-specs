@@ -97,27 +97,48 @@
 
 ## 4. 通用功能实现要点（以 Android 为例）
 
-### 4.1 内置更新下载
-- **「发现新版本」弹窗**：标题 + 描述 + 底部左右两个按钮（取消 / 下载），风格与全局一致。
-- **「下载进度」弹窗**：标题 + 横向进度条 + 百分比 + 底部按钮（取消 / 跳转仓库主页）；下载完成自动关窗并拉起安装界面。
-- **下载 URL 策略（重要）**：**代理优先、直连兜底**（部分地区直连 GitHub 超时）；连接超时短（如 5 秒）快速切源；镜像列表顺序化、直连放最后兜底。
+> 本节是**「检测 → 下载 → 安装」完整流程**，新项目直接照此实现；各通道 URL 用 `{占位符}` 换成实际值。
 
-### 4.2 安装（Android 8+）
+### 4.1 内置更新：触发与整体流程
+- **触发时机**：应用启动后**异步检测**（不阻塞首屏）；另可在设置页提供「检查更新」手动入口。
+- **整体流程（顺序执行）**：
+  1. 多通道检测版本（见 §4.2）→ 得到线上最大 `versionName`
+  2. 与本地 `versionCode` 比较，有新版 → 弹「发现新版本」窗（标题 + 描述 + 取消 / 下载）
+  3. 点下载 → 弹「下载进度」窗（进度条 + 百分比 + 取消 / 跳转仓库主页）
+  4. 下载完成 → 校验产物 → 自动拉起安装界面（§4.4）
+  5. 安装被拒 / 失败 → 回退：跳转仓库 Releases 页或浏览器下载（§4.4 失败回退）
+
+### 4.2 检测通道（优先级 + URL 形态）
+> **代理优先、直连兜底**；每条通道设**短超时（如 5 秒）**，超时立即切下一条，不白等。多源取**最大版本号**，比较后再提示。
+
+| 优先级 | 通道 | URL 形态（`{占位符}`） | 适用 |
+|---|---|---|---|
+| 1 | 上游 API | `https://api.github.com/repos/{owner}/{repo}/releases/latest`（读 `tag_name`） | 海外/能直连 |
+| 2 | 代理/镜像 API | `https://{proxy}/api.github.com/repos/{owner}/{repo}/releases/latest` | 国内主通道 |
+| 3 | 版本文件（CDN/代理） | `https://{proxy}/repos/{owner}/{repo}/latest_version.txt?t={ts}` | **国内主要通道**，读纯文本版本号 |
+| 4 | 页面 302 重定向 | `https://github.com/{owner}/{repo}/releases/latest`（跟随重定向取 tag） | 无 API 可用时 |
+| 5 | IP 直连兜底 | 版本文件 `raw.githubusercontent.com` 的 IP 直连 | 绕过 DNS 污染 |
+
+- 通道 1/2 属「API 型」，通道 3/5 属「版本文件型」；两者都取到后以**版本文件型为准**并做一次交叉校验，避免 API 返回被污染。
+
+### 4.3 下载与镜像策略
+- **下载 URL** = 对应 release 的 asset 链接；**代理优先、直连兜底**。
+- 镜像列表**顺序化**（`[proxy1, proxy2, 直连]`），直连放**最后**兜底。
+- 连接超时短（5 秒）快速切源；用 HTTP 流式读 `Content-Length` / 已读字节做进度。
+- **CDN 缓存**：URL 末尾加 `?t={timestamp}` 防返回旧版本/旧产物。
+
+### 4.4 安装（Android 8+）
 - 权限：`REQUEST_INSTALL_PACKAGES`。
 - 用 `androidx.core.content.FileProvider` 提供 `content://` URI。
 - `res/xml/file_paths.xml` 声明下载目录与缓存目录。
 - FileProvider authority = `{applicationId}.fileprovider`，并在 Manifest 声明 `<provider>`。
 - 安装 Intent：`ACTION_VIEW` + `application/vnd.android.package-archive` + `FLAG_GRANT_READ_URI_PERMISSION` + `FLAG_ACTIVITY_NEW_TASK`。
+- **失败回退**：`try/catch` 捕获 `ActivityNotFoundException` / 安装被拒 → 用 `ACTION_VIEW` 打开 `https://github.com/{owner}/{repo}/releases/latest`（或代理页面），让用户浏览器下载。
 
-### 4.3 更新检测
-- **多通道检测**提高成功率：
-  1. 上游 API（如 GitHub `releases/latest`）
-  2. 页面 302 重定向提取版本/tag
-  3. **CDN / 代理读版本文件**（`latest_version.txt`）——国内主要通道
-  4. IP 直连兜底（绕过 DNS 污染）
-- **版本文件**：仓库根纯文本，内容即版本号；**每次发版必须更新**（CI 自动或手动）。
-- **CDN 缓存**：URL 末尾加 `?t={timestamp}` 防缓存返回旧版本。
-- 多源取**最大版本号**，做版本比较后再提示。
+### 4.5 版本文件（latest_version.txt）
+- **位置**：仓库根目录纯文本，**内容即版本号**（如 `1.4.17`）。
+- **每次发版必须更新**（CI 自动更新或发版手动），否则检测不到新版本。
+- **多仓库同步**：自有仓库与分发/模块仓库各自的 `latest_version.txt` 都要更新。
 
 ---
 
@@ -125,9 +146,10 @@
 
 - [ ] 自有仓库 `releases/latest` 已是新 tag
 - [ ] 分发/模块仓库 `releases/latest` 已是新 tag（如 `{versionCode}-{version}`）
-- [ ] `latest_version.txt` 内容 == versionName
+- [ ] **所有**发布仓库的 `latest_version.txt` 内容 == versionName（§4.5）
 - [ ] 各仓库产物大小一致 / 可下载
 - [ ] 产物验签指纹匹配
+- [ ] 升级检测各通道（§4.2）实测均能取到新版本，且页面「检查更新」可弹出新版
 - [ ] 变更说明 / 发布正文已写好（含中文）
 
 ---
@@ -172,6 +194,11 @@
 
 ### 玻璃拟态按钮组件库 GlassButtons
 - **仓库**：https://github.com/GJR787878/GlassButtons
+- **调用入口（直达）**：
+  - README / 使用说明：https://github.com/GJR787878/GlassButtons#readme
+  - 源码（组件目录）：`glassbutton/src/main/java/com/gjr/glassbutton/`
+  - 最新 Release / demo APK：https://github.com/GJR787878/GlassButtons/releases/latest
+  - 历史版本：https://github.com/GJR787878/GlassButtons/releases
 - **定位**：苹果风格毛玻璃半透明按钮组件库（抽自 RamStatusBar），纯 Java + Android framework，无第三方依赖。
 - **组件**：`GlassCapsuleButton` / `GlassRadioButton` / `GlassNavBar` / `GlassButtonDrawable` / `GlassButtonStyle`。
 - **圆角规范对应**：组件默认 28dp；接入时按项目设定——**DRS 用 24dp、RSB 用 28dp**（构造参数或 `app:glassCornerRadius`）。
