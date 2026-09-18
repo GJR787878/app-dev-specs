@@ -41,6 +41,11 @@
 - RSB: radius 28dp, border 1dp
 - 按钮文字大小 14sp
 
+> **GlassButtonDrawable 来源**：
+> - DRS: `GJR787878/DeviceResetSpoofer` → `app/src/main/java/io/github/gjr787878/devicereset/GlassButtonDrawable.java`
+> - RSB: `GJR787878/RamStatusBar` → `app/src/main/java/com/example/ramstatusbar/GlassButtonDrawable.java`
+> - 两个仓库各自维护一份，新弹窗/按钮样式统一复用此类
+
 ### 多语言
 - 三语：中文（zh）、英文（en）、俄文（ru）
 - **README 语言顺序：英文 → 中文 → 俄文**
