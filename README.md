@@ -93,6 +93,62 @@
 - 触控目标不小于 44×44dp。
 - 状态反馈即时（点击有视觉变化），可点击元素有明确焦点态。
 
+### 3.6 选项与开关：一律毛玻璃胶囊化（硬性要求）
+
+> **原则**：任何"带可选状态"的控件——单选选项、独立开关、操作按钮——**都必须用 `GlassButtonDrawable` 毛玻璃胶囊作背景**。禁止裸文字、禁止原生 `Switch`/`ToggleButton`、禁止 `RadioButton` 自带圆圈、禁止系统默认按钮样式。优先用 §8 组件库的 `GlassCapsuleButton` / `GlassRadioButton`；单文件拷贝场景才手写 Drawable。
+
+**胶囊两态的视觉规范（所有选项/开关共用一套）：**
+
+| 状态 | 描边 | 填充 | 文字 |
+|---|---|---|---|
+| 未选中（关） | 1dp，淡白 `0x40FFFFFF` | 通透玻璃底（约 20%~70% 深灰 `#1C1C1E`，按组件默认） | 白 `0xFFFFFFFF` |
+| 选中（开） | 2dp，纯白 `0xFFFFFFFF` | 填充加深（约 35%） | 强调蓝 `0xFF0A84FF` |
+| 按压中 | —— | 填充轻微提亮，保留反馈 | —— |
+
+**A. 单选选项（互斥，如"仅时间 / 时间+内存 / 仅内存"）：**
+- 容器用 `RadioGroup`；每个选项是 `RadioButton`，必须 `setButtonDrawable(null)` 去掉原生圆圈。
+- 背景 `GlassButtonDrawable(圆角dp, 1dp, false)`。
+- 点击后**遍历同组所有项**重算选中态：选中项 `setGlassSelected(true)` + 文字蓝，其余 `setGlassSelected(false)` + 文字白。
+- 竖排 `MATCH_PARENT`、上下间距约 12dp；平板横排用 `weight=1` 等宽 + 左右 6dp 间距（见 §3.7 平板）。
+
+**B. 开始/关闭开关（独立布尔，如"各 Hook 项独立开/关"）——实现方法：**
+- **不用原生 Switch**，用一行可点击项（`LinearLayout` 或按钮），背景就是毛玻璃胶囊。
+- 点击整行触发 `toggle(index)`，状态机固定三步：
+  1. `cur = readState(index)`（从 SharedPreferences / 配置文件读当前值）
+  2. `next = !cur; writeState(index, next)`（立即持久化）
+  3. 更新 UI：`glass.setGlassSelected(next)`（开=蓝描边，关=淡描边）+ 该项文字 `setSelected ? 蓝 : 白`
+- **进入页面必须 `loadConfig()`**：onCreate 时遍历**全部**开关项，按持久化值逐组恢复 `setGlassSelected(...)` 与文字色，否则旋转/重进会回到默认关态。
+- 一个开关 = 一个独立 `GlassButtonDrawable` 实例（用数组/字段持有），切换时只 `setGlassSelected`  invalidate，不重建背景对象。
+
+**C. 操作按钮（选择颜色 / 透明 / 返回 / 确认 / 取消等）：**
+- 一律 `createGlassButtonBg(density)` = `GlassButtonDrawable(圆角dp, 1dp, false)`，文字白、`setAllCaps(false)`，内边距约 左右 24dp / 上下 14dp。
+- 多按钮并排时等宽 `weight=1`，不各写死宽度。
+
+> 圆角取值全项目统一：DRS 24dp、RSB 28dp（见 §8）；同一张界面里不混用两种圆角。
+
+### 3.7 二级界面（子页面）的美术风格与逻辑
+
+> 二级界面 = 从主界面/标签页点进去的独立设置页（如"背景颜色""时间设置""应用选择器"）。**必须与主界面同一套美术语言，禁止另起风格。**
+
+**形态与跳转：**
+- 独立 `Activity`，主界面 `startActivity(new Intent(主界面.this, XxxSettingsActivity.class))`。
+- 返回不依赖系统默认返回键样式，页面底部自绘一个毛玻璃胶囊「返回」按钮，点击 `finish()`。
+- 不用 `onActivityResult` 回传结果：二级页自己持有并直接写配置，主界面 `onResume()` 重读即可。
+
+**美术风格（逐项照做）：**
+- 背景纯黑 `0xFF000000`，与主界面一致。
+- 根布局 padding：**顶部 48dp**（给系统状态栏让位）、左右 24dp、底部 32dp。
+- 标题 20sp 白色；描述/副标 14sp 灰色 `0xFFCCCCCC`；间距约 16~24dp。
+- 页面内**所有**按钮、取色块、操作项都套毛玻璃胶囊（§3.6），与主界面同一圆角值。
+- 不出现浅色弹窗、不出现系统默认控件样式（深色主题见 §3.1）。
+
+**逻辑：**
+- **进入即初始化**：`onCreate` 从持久层读当前值，还原标题、预览、所有开关/选项态。
+- **改动即时生效并持久化**：需 root 的写 `/data/local/tmp/` 配置文件；普通项写 SharedPreferences。写成功/失败都 `Toast` 反馈（失败提示检查 root 权限）。
+- 有"效果预览"的，先给实时预览区，再放"确认/应用"按钮。
+- **平板（`smallestScreenWidthDp >= 600`）**：竖排的操作按钮组改为横排一行，`weight=1` 等宽 + 左右 4~6dp 间距，不整行拉伸（与 §3.4 一致）。
+- 三语文案齐全，全部走统一多语言函数。
+
 ---
 
 ## 4. 通用功能实现要点（以 Android 为例）
