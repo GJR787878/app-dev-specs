@@ -359,7 +359,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
    }
    // app/build.gradle
    dependencies {
-       implementation 'com.github.GJR787878:GlassButtons:1.0.0'
+       implementation 'com.github.GJR787878:GlassButtons:v1.0.1'
    }
    ```
 2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
