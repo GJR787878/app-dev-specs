@@ -225,6 +225,11 @@
 | 9 | 本地文件与线上不同步 | 误以为本地已改 | 用 API 改完必须 GET 复核 |
 | 10 | 系统弹窗白底，与深色 UI 不统一 | 无全局深色主题 | 设 `AppTheme` + 深色弹窗主题 |
 | 11 | 大屏布局被简单拉伸、不协调 | 无断点适配 | 断点重排 + 按钮网格化 + 导航形态切换 |
+| 12 | LSPosed 仓库 Latest 不更新 | tag 格式不对 | tag 必须是 `{versionCode}-{versionName}`，不是 `v{versionName}` |
+| 13 | LSPosed 仓库有 release 但下载不到 APK | release 没上传 asset | 创建 release 时必须同时上传 APK 附件 |
+| 14 | LSPosed 仓库有新 release 但不显示为 Latest | 没设 make_latest | 用 API PATCH `releases/{id}` 设 `make_latest=true` |
+| 15 | LSPosed 更新检测不到新版本 | 缺 latest_version.txt | 仓库根目录放 `latest_version.txt`，内容为纯版本号 |
+| 16 | 自己仓库 release 没 APK asset | release 是空 release | 从 CI artifacts 下载 APK，或发布时直接附带 |
 
 ---
 
