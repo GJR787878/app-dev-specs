@@ -340,9 +340,42 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 - **定位**：苹果风格毛玻璃半透明按钮组件库（抽自 RamStatusBar），纯 Java + Android framework，无第三方依赖。
 - **组件**：`GlassCapsuleButton` / `GlassRadioButton` / `GlassNavBar` / `GlassButtonDrawable` / `GlassButtonStyle`。
 - **圆角规范对应**：组件默认 28dp；接入时按项目设定——**DRS 用 24dp、RSB 用 28dp**（构造参数或 `app:glassCornerRadius`）。
-- **两种接入方式**：
-  1. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
-  2. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
+
+**【硬规则】禁止手写简化版玻璃 Drawable**
+- 自己写的"半透明+描边"只是纯色填充，没有 5 层玻璃效果
+- 必须用 GlassButtons 完整实现：填充 + 顶部高光 + 底部阴影 + 顶部亮线 + 渐变描边
+- 见 §6 踩坑 #22
+
+**三种接入方式：**
+1. **JitPack 远程依赖（推荐，无需拷贝）**：
+   ```groovy
+   // 根 build.gradle / settings.gradle
+   dependencyResolutionManagement {
+       repositories {
+           google()
+           mavenCentral()
+           maven { url 'https://jitpack.io' }
+       }
+   }
+   // app/build.gradle
+   dependencies {
+       implementation 'com.github.GJR787878:GlassButtons:1.0.0'
+   }
+   ```
+2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
+3. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
+
+**GlassNavBar 底部导航栏用法：**
+```java
+GlassNavBar nav = findViewById(R.id.bottom_nav);
+nav.addItem(icon1, "导航一");
+nav.addItem(icon2, "导航二");
+nav.addItem(icon3, "导航三");
+nav.setSelected(0);
+nav.setOnItemSelectedListener(index -> { /* 处理切换 */ });
+```
+> 选中项高亮背景圆角必须和导航栏外层一致（28dp），不能用全圆角。见 §6 踩坑 #21。
+
 - **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
 - 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
 
