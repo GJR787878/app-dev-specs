@@ -270,6 +270,9 @@
 | 18 | LSPosed 索引不更新 | 普通 push 不触发 build | 必须重新打 tag 或重新创建 release 触发 bot |
 | 19 | 模块在索引里不显示 | description 为空 | 仓库 description 不能为空，会被过滤掉 |
 | 20 | 索引已 build 成功但搜不到 | CDN 缓存 | 等 5-10 分钟 CDN 自动刷新 |
+| 21 | 导航栏选中项圆角和外层不贴合 | 选中项高亮用了全圆角(1000f) | 选中项高亮背景圆角必须和外层导航栏圆角一致(28dp) |
+| 22 | 玻璃按钮效果不对，只是纯色填充 | 只写了一层背景 | 必须用 GlassButtons 完整实现：5 层叠加（填充+高光+阴影+亮线+渐变描边） |
+| 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
 
 ---
 
