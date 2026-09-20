@@ -230,6 +230,10 @@
 | 14 | LSPosed 仓库有新 release 但不显示为 Latest | 没设 make_latest | 用 API PATCH `releases/{id}` 设 `make_latest=true` |
 | 15 | LSPosed 更新检测不到新版本 | 缺 latest_version.txt | 仓库根目录放 `latest_version.txt`，内容为纯版本号 |
 | 16 | 自己仓库 release 没 APK asset | release 是空 release | 从 CI artifacts 下载 APK，或发布时直接附带 |
+| 17 | 新模块在 LSPosed 索引里搜不到 | 缺 SUMMARY/SCOPE/SOURCE_URL/ADDITIONAL_AUTHORS 文件 | 仓库根目录必须放这 4 个文件，否则不收录 |
+| 18 | LSPosed 索引不更新 | 普通 push 不触发 build | 必须重新打 tag 或重新创建 release 触发 bot |
+| 19 | 模块在索引里不显示 | description 为空 | 仓库 description 不能为空，会被过滤掉 |
+| 20 | 索引已 build 成功但搜不到 | CDN 缓存 | 等 5-10 分钟 CDN 自动刷新 |
 
 ---
 
