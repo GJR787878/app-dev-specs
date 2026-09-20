@@ -95,7 +95,11 @@
 
 ### 3.6 交互组件规范：毛玻璃胶囊化 + 整行布局（硬性要求）
 
-> **原则**：任何"带可选状态"的控件——单选选项、独立开关、操作按钮——**都必须用 `GlassButtonDrawable` 毛玻璃胶囊作背景**。禁止裸文字、禁止原生 `Switch`/`ToggleButton`、禁止 `RadioButton` 自带圆圈、禁止系统默认按钮样式。优先用 §8 组件库的 `GlassCapsuleButton` / `GlassRadioButton`；单文件拷贝场景才手写 Drawable。
+> ⚠️ **硬规则（必读）**：
+> 1. **禁止手写简化版玻璃 Drawable**——自己写的"纯色填充+描边"效果差很远。必须从 §8 GlassButtons 仓库**拷贝完整 5 层实现**（半透明填充 + 顶部高光 + 底部阴影 + 顶部亮线 + 渐变描边）。
+> 2. **拷贝时必须同时带 `attrs.xml`**——只用 `.java` 文件会报 R 类找不到。
+> 3. **任何"带可选状态"的控件都必须用毛玻璃胶囊**：单选选项、独立开关、操作按钮。禁止裸文字、禁止原生 `Switch`/`ToggleButton`、禁止 `RadioButton` 自带圆圈、禁止系统默认按钮样式。
+> 4. 优先用 §8 组件库的 `GlassCapsuleButton` / `GlassRadioButton` / `GlassNavBar`；单文件拷贝场景才手写 Drawable。
 
 #### 布局规范（整行胶囊，不是卡片+小按钮）
 
@@ -161,6 +165,36 @@
 #### 二级菜单样式
 - **整页**：标题在上，下方全宽玻璃胶囊列表，点选即返回
 - **弹窗**：圆角毛玻璃弹窗，标题+说明在上，底部并排两个玻璃按钮（取消/确认）
+
+#### D. 底部导航栏（GlassNavBar）
+
+> 底部导航是**固定组件**，不是"选项"。必须用 `GlassNavBar`，不要自己写三个按钮拼。
+
+**代码模板：**
+```java
+// 布局 XML 里放 GlassNavBar
+// <io.github.xxx.GlassNavBar android:id="@+id/bottom_nav" .../>
+
+GlassNavBar nav = findViewById(R.id.bottom_nav);
+nav.addItem(icon1, "导航一");   // icon 是 Drawable，会自动着色
+nav.addItem(icon2, "导航二");
+nav.addItem(icon3, "导航三");
+nav.setSelected(0);              // 默认选中第一项
+nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
+```
+
+**圆角对齐规则（踩过坑）：**
+- 选中项高亮背景圆角**必须和外层导航栏圆角一致**（默认 28dp）
+- **禁止用 `setCornerRadius(1000f)` 全圆角**——内外圆角不贴合，视觉很怪
+- 首尾项不需要单独写左/右圆角，统一用和导航栏相同的圆角值即可
+
+**图标：**
+- `addItem()` 接受 `Drawable`，会自动着色：未选中白色、选中 iOS 蓝
+- 占位图标可用 `new GradientDrawable(Oval, Color.WHITE)` 快速生成
+
+**平板适配：**
+- 手机：底部横排（默认）
+- 平板（`smallestScreenWidthDp >= 600`）：`nav.setOrientation(LinearLayout.VERTICAL)` 切左侧竖排，`setSideWidthDp(72f)` 固定宽度
 
 ### 3.7 二级界面（子页面）的美术风格与逻辑
 
@@ -311,6 +345,75 @@
   2. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
 - **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
 - 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
+
+**最小可运行 MainActivity 模板：**
+```java
+public class MainActivity extends AppCompatActivity {
+    private SharedPreferences sp;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        sp = getSharedPreferences("xxx", MODE_PRIVATE);
+
+        // 开关按钮：点击直接切换
+        GlassCapsuleButton sw1 = findViewById(R.id.sw1);
+        sw1.setOnClickListener(v -> {
+            boolean cur = sp.getBoolean("sw1", false);
+            sp.edit().putBoolean("sw1", !cur).apply();
+            sw1.setGlassSelected(!cur);
+        });
+
+        // 底部导航
+        GlassNavBar nav = findViewById(R.id.bottom_nav);
+        nav.addItem(createIcon(), "导航一");
+        nav.addItem(createIcon(), "导航二");
+        nav.addItem(createIcon(), "导航三");
+
+        loadConfig(); // 进入页面恢复所有状态
+    }
+
+    private void loadConfig() {
+        sw1.setGlassSelected(sp.getBoolean("sw1", false));
+        // ... 其他控件同理
+    }
+
+    private GradientDrawable createIcon() {
+        GradientDrawable icon = new GradientDrawable();
+        icon.setShape(GradientDrawable.OVAL);
+        icon.setColor(Color.WHITE);
+        return icon;
+    }
+}
+```
+
+**布局 XML 模板（activity_main.xml）：**
+```xml
+<LinearLayout android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:orientation="vertical"
+    android:paddingTop="48dp" android:paddingLeft="24dp"
+    android:paddingRight="24dp" android:paddingBottom="32dp">
+
+    <TextView android:text="标题" android:textColor="#FFFFFF"
+        android:textSize="28sp" android:textStyle="bold" android:layout_marginBottom="32dp" />
+
+    <!-- 选项一：开关 -->
+    <TextView android:text="选项一" android:textColor="#CCCCCC"
+        android:textSize="14sp" android:layout_marginBottom="12dp" />
+    <io.github.xxx.GlassCapsuleButton android:id="@+id/sw1"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="关" android:layout_marginBottom="24dp" />
+
+    <!-- 底部导航 -->
+    <io.github.xxx.GlassNavBar android:id="@+id/bottom_nav"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginLeft="16dp" android:layout_marginRight="16dp"
+        android:layout_marginBottom="16dp" />
+</LinearLayout>
+```
 
 ---
 
