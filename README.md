@@ -16,6 +16,51 @@
 
 ---
 
+## 0.5 动手前速查（AI 必读，一页纸）
+
+> **首次开发 app 时，必须完整读完本手册全文（约 500 行）再动手。**
+> 本节只是摘要，完整规则见对应章节。
+
+### 按任务走，别漏读
+| 任务 | 必读章节 |
+|---|---|
+| 新写设置页/选项 | §3.6 硬规则 + §3.7 + §8 纯代码模板 |
+| 发版 | §1.2/§1.3 + §2 + §5 清单 + §6 表 |
+| 改 UI / 修 bug | §3.6 + §6 #21/#27/#29 |
+| 新项目初始化 | §7 + §2.2 + §3.4 平板适配 |
+
+### 工具链版本（钉死，别随手升级）
+| 项 | 值 |
+|---|---|
+| AGP | **8.5.2** |
+| Gradle | **8.9**（wrapper；AGP 8.5.x 要求 ≥8.7） |
+| JDK | 17 |
+| minSdk / compileSdk | 26 / 34 |
+| 圆角 | 项目默认 24dp（DRS=24、RSB=28，二选一不混用） |
+| 强调蓝 | `#0A84FF` |
+
+### 硬规则（违反即返工）
+1. 改 GitHub 用在线 API，改完 GET 回读验证。
+2. 所有选项/开关/按钮用毛玻璃胶囊，禁原生 `Switch`/`RadioButton` 圆圈。
+3. 开关 `read → !write → 更新 selected`，`onCreate` `loadConfig()` 全量恢复。
+4. 二级界面纯黑底、顶部 48dp 让位状态栏、自绘「返回」`finish()`。
+5. 发版 `versionCode` + `versionName` 同增。
+6. 单选 `GlassRadioButton` 用 `setChecked`；`GlassCapsuleButton` 才用 `setGlassSelected`（§6 #28）。
+7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #26）。
+8. **平板左侧竖排导航必须让内容区让出宽度**（§6 #27）：内容区 `paddingLeft` 约 120dp。
+9. **平板适配不能省**：断点 `smallestScreenWidthDp >= 600`，导航改左侧竖排胶囊，内容重排不拉伸（§3.4）。
+10. 导航栏浮底布局时，**padding 必须设置在内容 LinearLayout 上，不是 ScrollView**（§6 #24）。
+
+### 术语
+- **DRS / RSB**：两个历史项目名，圆角规范来源（DRS=24dp、RSB=28dp）。
+- **LSPosed**：Xposed 现代分发版，模块仓库发布见 §4、§6。
+- **GlassButtons**：毛玻璃组件库，见 §8。
+
+### 占位符（动手前必须全部替换成真实值）
+`{owner}` / `{repo}`、`{applicationId}` / `{包名}`、`{versionName}` / `{versionCode}`、`{proxy}`、各 `{占位符URL}`。
+
+---
+
 ## 1. 通用开发流程原则
 
 ### 1.1 提交与协作
