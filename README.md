@@ -523,4 +523,86 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
+## 9. 高效开发流程（AI 执行规范）
+
+> 从实战中总结的高效开发步骤，避免重复劳动、重复踩坑。
+
+### 9.1 新项目快速初始化（5分钟出骨架）
+
+**不要从零写所有文件。按这个顺序复制：**
+
+1. **从任意已有项目复制骨架**（推荐用 UIdemo2 或最近的项目）：
+   - `build.gradle`（根目录）
+   - `settings.gradle`
+   - `gradle/wrapper/gradle-wrapper.properties`
+   - `.github/workflows/build.yml`（CI 配置）
+   - `app/build.gradle`
+   - `app/src/main/AndroidManifest.xml`
+   - `app/src/main/res/values/strings.xml`
+   - `app/src/main/res/values/themes.xml`
+   - `app/src/main/java/.../GlassNavBar.java`（最新磨砂版）
+   - `app/src/main/java/.../GlassCapsuleButton.java`
+   - `app/src/main/java/.../GlassRadioButton.java`
+   - `app/src/main/java/.../GlassButtonDrawable.java`
+   - `app/src/main/java/.../GlassButtonStyle.java`
+
+2. **只改这 6 个地方：**
+   - `applicationId`（build.gradle）
+   - 应用名（strings.xml）
+   - 包名（所有 .java 文件第一行，批量替换）
+   - 目录名（把旧包名目录改成新包名）
+   - 图标（可选）
+   - 版本号（versionCode / versionName）
+
+3. **删掉旧业务代码**：MainActivity 里的旧选项，只留导航栏骨架
+
+**节省时间：** 不用每次写 build.gradle、Manifest、CI 配置，直接复制改包名
+
+### 9.2 GlassButtons 接入方式选择
+
+| 方式 | 适用场景 | 速度 |
+|---|---|---|
+| **源码拷贝**（推荐） | 新项目、想精简 APK 大小 | 最快，直接复制 5 个 .java 文件 |
+| **JitPack 依赖** | 快速验证、不在意 APK 大小 | 快，加一行依赖 |
+
+**源码拷贝注意事项：**
+- 必须同时拷贝 `attrs.xml` 到 `res/values/`（否则 R 类找不到，见 §6 #23）
+- 批量替换包名，`grep` 校验无残留（见 §6 #31）
+
+### 9.3 CI 构建交付流程
+
+**标准流程：**
+1. `git push origin main`
+2. `gh run list --limit 1` 拿 run ID
+3. `gh run watch --exit-status` 等构建完成
+4. 失败 → 拉日志找原因（`gh api .../logs | grep error`）
+5. 成功 → 拿 artifact ID → 下载 zip → 解压 → 上传交付
+
+**优化点：**
+- 推送后立刻开始 watch，不用等
+- 失败时直接 grep 日志找 `error:` / `What went wrong`，不用看全部日志
+- 构建成功后自动拿 artifact，不用手动找
+
+### 9.4 写完代码后的自检清单
+
+**每次写完必须核对：**
+1. 包名全替换了吗？`grep -r "旧包名" .` 应该无结果
+2. 版本号改了吗？versionCode + versionName 同增
+3. 导航栏遮挡内容吗？padding 在内容 LinearLayout 上吗？
+4. 平板适配做了吗？sw600dp+ 检测了吗？
+5. 所有选项状态持久化了吗？sp.get/sp.put 都写了吗？
+6. 写完 push 后 CI 构建成功了吗？
+
+### 9.5 常见错误快速定位
+
+| 症状 | 先查什么 |
+|---|---|
+| 构建失败 | 日志里 `error:` 那一行 |
+| 运行闪退 | 先注释可疑代码，二分法定位 |
+| UI 不对 | 对照 §3.6 胶囊规范，逐条检查 |
+| 导航栏遮挡 | 检查 padding 是不是设在 ScrollView 上 |
+| LSPosed 搜不到 | 检查 SUMMARY/SCOPE/SOURCE_URL/ADDITIONAL_AUTHORS 四个文件有没有 |
+
+---
+
 > 维护提示：本文件是**通用参照模板**，随实战经验持续沉淀。新增经验时保持「结论先行 + 表格 + 占位符 + 文件路径」的结构，便于后续项目与 AI 快速读取执行。
