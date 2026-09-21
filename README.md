@@ -159,6 +159,7 @@
 - **纯黑背景**，无卡片、无分组背景色
 - 标题在胶囊上方，左对齐，14sp 灰色 `#CCCCCC`
 - 胶囊全宽 `match_parent`，圆角统一值（DRS 24dp、RSB 28dp）
+- 相邻选项胶囊**垂直间距约 12dp**（4dp 过挤、视觉贴在一起；触控目标保持 ≥44dp）
 - 胶囊内文字居中，显示当前值或操作文字
 
 **禁止样式：**
@@ -235,6 +236,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 **平板适配：**
 - 手机：底部横排（默认）
 - 平板（`smallestScreenWidthDp >= 600`）：`nav.setOrientation(LinearLayout.VERTICAL)` 切左侧竖排，`setSideWidthDp(72f)` 固定宽度
+- 竖排胶囊**高度取屏幕约半屏、垂直居中**，不铺满（外层容器用半屏高度 + `gravity=center_vertical`）；内容区 `paddingLeft` 让出导航宽（§6 #27）
 
 ### 3.7 二级界面（子页面）的美术风格与逻辑
 
@@ -352,6 +354,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 26 | 弹窗选项多，底部取消/确认按钮被选项压住/重叠 | 弹窗内容没包 ScrollView，或按钮行没加 topMargin | 弹窗内容区包 `ScrollView`；按钮行（取消/确认）加 `topMargin` 与内容隔开 |
 | 27 | 平板上左侧竖排导航悬浮盖住内容 | 只把导航挪到左侧，内容区没让出宽度 | 内容区 `paddingLeft` 让出导航宽+边距+间距（约 120dp），或水平 LinearLayout 左右分列 |
 | 28 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
+| 29 | 新项目首次 CI 构建失败（Build debug APK 步） | 从组件库/旧项目复制 widget 等 Java 文件后，`package` 声明或 `import ...R` 仍指向旧包名，与 namespace 不一致 | 复制后批量替换为新 `applicationId`：`package` + `import {新包名}.R`；push 前 `grep -rn 旧包名` 校验无残留 |
 
 ---
 
@@ -362,7 +365,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 - [ ] **工程骨架**：`build.gradle` 配置 `applicationId`、`minSdk`、`targetSdk/compileSdk`、起始版本号；统一签名（debug 用 release keystore）
 - [ ] **Manifest**：网络权限、安装权限；全局深色主题挂载；声明需要的 provider / meta-data
 - [ ] **主题**：全局 `AppTheme` + 深色弹窗主题
-- [ ] **统一控件**：复用的按钮/弹窗控件类 + 统一圆角/间距常量
+- [ ] **统一控件**：复用的按钮/弹窗控件类 + 统一圆角/间距常量；复制组件后 grep 校验 `package` / `import R` 已改为新 `applicationId`（§6 #29）
 - [ ] **多语言**：所有 UI 字符串多语齐全 + 语言偏好；对外文档语言顺序统一
 - [ ] **CI workflow**：沿用模板；验签断言、版本文件步骤加分支守卫 + continue-on-error
 - [ ] **更新机制**：多通道检测 + 下载镜像顺序 + 安装（FileProvider/权限/Intent）
