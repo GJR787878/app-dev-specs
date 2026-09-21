@@ -564,6 +564,9 @@ public class MainActivity extends AppCompatActivity {
 **源码拷贝注意事项：**
 - 必须同时拷贝 `attrs.xml` 到 `res/values/`（否则 R 类找不到，见 §6 #23）
 - 批量替换包名，`grep` 校验无残留（见 §6 #31）
+- 拷贝后给引用 `R.styleable` 的类补 `import {applicationId}.R;`（R 在主包，不在 widget 子包）
+
+**实测数据（UIdemo2 v1.0.1，2026-09-22）：** 源码拷贝 + release R8（`minifyEnabled true` + `shrinkResources true` + `signingConfig signingConfigs.debug` 保证覆盖安装）后，APK 从 50KB → 31KB（-38%），3 个 dex 合并为 1。无反射代码时 R8 无需额外 keep 规则；混淆后组件类被重命名为 `a/b/c` 但功能保留，可用方法签名特征（`setOnItemSelectedListener`/`setChecked`/`setGlassSelected`）在 dex 中验证。
 
 ### 9.3 CI 构建交付流程
 
