@@ -380,6 +380,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 29 | 弹窗内容被键盘挡住 | 弹窗内容没包 ScrollView | 弹窗内容必须包 `ScrollView`，按钮行加 `topMargin`（≥16dp） |
 | 30 | 导航栏磨砂效果太白，不像玻璃 | 用了纯透明白色背景 | 导航栏磨砂背景应该是**深色渐变**（70% 不透明深灰 → 60% 稍浅深灰），不是透明白色泛底 |
 | 31 | 复制 Java 文件后包名不对，R 类找不到 | 只复制了文件没改包名 | 复制后必须批量替换包名，`grep` 校验无残留旧包名 |
+| 32 | 弹窗直角不是圆角，与胶囊按钮不统一 | 弹窗 `windowBackground` 设了纯色 | 弹窗窗口背景用圆角 GradientDrawable（`res/drawable/dialog_bg.xml`，半径与按钮一致，§3.6 圆角毛玻璃弹窗） |
 
 ---
 
