@@ -241,6 +241,25 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 - 手机：底部横排（默认）
 - 平板（`smallestScreenWidthDp >= 600`）：`nav.setOrientation(LinearLayout.VERTICAL)` 切左侧竖排，`setSideWidthDp(72f)` 固定宽度
 
+### 3.6.1 导航栏磨砂背景规范
+
+> 导航栏（GlassNavBar）的背景效果规范，和选项胶囊的玻璃效果不同。
+
+**磨砂背景参数：**
+- 渐变方向：上浅下深（`GradientDrawable.Orientation.TOP_BOTTOM`）
+- 顶部色：`0xB32C2C2E`（70% 不透明深灰）
+- 底部色：`0x993C3C3E`（60% 不透明稍浅深灰）
+- 边框：1dp 淡白 `0x55FFFFFF`
+- 圆角：和外层一致（24dp 或 28dp）
+
+**禁止：**
+- ❌ 纯透明白色背景（会太白，不像玻璃）
+- ❌ 纯黑色不透明背景（没有磨砂感）
+- ❌ 直接调用 `getWindow().setBackgroundBlurRadius()`（普通 Activity 会闪退，见 §6 #26）
+
+**说明：**
+真正的高斯模糊（背景内容模糊）需要 Android 12+ 且需要特殊窗口配置。目前用**半透明深色渐变**模拟磨砂玻璃质感，背景内容隐约可见但不刺眼。
+
 ### 3.7 二级界面（子页面）的美术风格与逻辑
 
 > 二级界面 = 从主界面/标签页点进去的独立设置页（如"背景颜色""时间设置""应用选择器"）。**必须与主界面同一套美术语言，禁止另起风格。**
@@ -354,6 +373,12 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
 | 24 | 导航栏浮底布局，最后几个选项被导航栏挡住 | padding 设置在 ScrollView 上，不是内容 LinearLayout 上 | padding 必须设置在内容 LinearLayout 上（paddingBottom≈140dp），ScrollView 高度是 match_parent 时 paddingBottom 不生效 |
 | 25 | 导航栏背景看起来是黑色不透明 | 用了简单 GradientDrawable，没有玻璃效果 | 导航栏背景必须用 GlassButtonDrawable（5层玻璃效果），不是简单 GradientDrawable |
+| 26 | `setBackgroundBlurRadius()` 直接调用闪退 | 普通 Activity 不能直接用 Window 背景模糊 API | 这个 API 需要特殊窗口配置（透明 Window），普通 Activity 直接调用会闪退。导航栏毛玻璃效果用半透明深色渐变模拟即可，不需要真模糊 |
+| 27 | 平板导航左侧竖排后内容被挡住 | 内容区没有让出左侧宽度 | 平板左侧竖排导航时，内容区 `paddingLeft` 必须让出约 120dp（`smallestScreenWidthDp >= 600` 时自动加） |
+| 28 | 单选按钮状态不对 | 用了 `setGlassSelected()` 而不是 `setChecked()` | `GlassRadioButton` 用 `setChecked()`；`GlassCapsuleButton` 才用 `setGlassSelected()` |
+| 29 | 弹窗内容被键盘挡住 | 弹窗内容没包 ScrollView | 弹窗内容必须包 `ScrollView`，按钮行加 `topMargin`（≥16dp） |
+| 30 | 导航栏磨砂效果太白，不像玻璃 | 用了纯透明白色背景 | 导航栏磨砂背景应该是**深色渐变**（70% 不透明深灰 → 60% 稍浅深灰），不是透明白色泛底 |
+| 31 | 复制 Java 文件后包名不对，R 类找不到 | 只复制了文件没改包名 | 复制后必须批量替换包名，`grep` 校验无残留旧包名 |
 
 ---
 
