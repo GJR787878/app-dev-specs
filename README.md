@@ -43,8 +43,8 @@
 4. 二级界面纯黑底、顶部 48dp 让位状态栏、自绘「返回」`finish()`。
 5. 发版 `versionCode` + `versionName` 同增。
 6. 单选 `GlassRadioButton` 用 `setChecked`；`GlassCapsuleButton` 才用 `setGlassSelected`（§6 #28）。
-7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #27）。
-8. 平板左侧竖排导航必须让内容区让出宽度（§6 #29）。
+7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #26）。
+8. 平板左侧竖排导航必须让内容区让出宽度（§6 #27）。
 
 ### 术语
 - **DRS / RSB**：两个历史项目名，圆角规范来源（DRS=24dp、RSB=28dp）。
@@ -349,6 +349,9 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
 | 24 | 导航栏浮底布局，最后几个选项被导航栏挡住 | padding 设置在 ScrollView 上，不是内容 LinearLayout 上 | padding 必须设置在内容 LinearLayout 上（paddingBottom≈140dp），ScrollView 高度是 match_parent 时 paddingBottom 不生效 |
 | 25 | 导航栏背景看起来是黑色不透明 | 用了简单 GradientDrawable，没有玻璃效果 | 导航栏背景必须用 GlassButtonDrawable（5层玻璃效果），不是简单 GradientDrawable |
+| 26 | 弹窗选项多，底部取消/确认按钮被选项压住/重叠 | 弹窗内容没包 ScrollView，或按钮行没加 topMargin | 弹窗内容区包 `ScrollView`；按钮行（取消/确认）加 `topMargin` 与内容隔开 |
+| 27 | 平板上左侧竖排导航悬浮盖住内容 | 只把导航挪到左侧，内容区没让出宽度 | 内容区 `paddingLeft` 让出导航宽+边距+间距（约 120dp），或水平 LinearLayout 左右分列 |
+| 28 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
 
 ---
 
@@ -479,7 +482,7 @@ public class MainActivity extends Activity {
     }
 }
 ```
-> 平板（`smallestScreenWidthDp>=600`）时：`nav.setOrientation(VERTICAL); setSideWidthDp(72f)`，内容 `paddingLeft` 让出约 120dp（§3.4/§6 #29）。
+> 平板（`smallestScreenWidthDp>=600`）时：`nav.setOrientation(VERTICAL); setSideWidthDp(72f)`，内容 `paddingLeft` 让出约 120dp（§3.4/§6 #27）。
 
 **XML 路线 MainActivity 模板：**
 ```java
