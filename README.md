@@ -307,6 +307,8 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 21 | 导航栏选中项圆角和外层不贴合 | 选中项高亮用了全圆角(1000f) | 选中项高亮背景圆角必须和外层导航栏圆角一致(28dp) |
 | 22 | 玻璃按钮效果不对，只是纯色填充 | 只写了一层背景 | 必须用 GlassButtons 完整实现：5 层叠加（填充+高光+阴影+亮线+渐变描边） |
 | 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
+| 24 | 导航栏浮底布局，最后几个选项被导航栏挡住 | padding 设置在 ScrollView 上，不是内容 LinearLayout 上 | padding 必须设置在内容 LinearLayout 上（paddingBottom≈140dp），ScrollView 高度是 match_parent 时 paddingBottom 不生效 |
+| 25 | 导航栏背景看起来是黑色不透明 | 用了简单 GradientDrawable，没有玻璃效果 | 导航栏背景必须用 GlassButtonDrawable（5层玻璃效果），不是简单 GradientDrawable |
 
 ---
 
