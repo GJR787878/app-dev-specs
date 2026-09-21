@@ -16,6 +16,46 @@
 
 ---
 
+## 0.5 动手前速查（AI 必读，一页纸）
+
+### 按任务走，别漏读
+| 任务 | 必读章节 |
+|---|---|
+| 新写设置页/选项 | §3.6 硬规则 + §3.7 + §8 纯代码模板 |
+| 发版 | §1.2/§1.3 + §2 + §5 清单 + §6 表 |
+| 改 UI / 修 bug | §3.6 + §6 #21/#27/#29 |
+| 新项目初始化 | §7 + §2.2 |
+
+### 工具链版本（钉死，别随手升级）
+| 项 | 值 |
+|---|---|
+| AGP | 8.5.2 |
+| Gradle | 8.9（wrapper；AGP 8.5.x 要求 ≥8.7，见 §6 #24） |
+| JDK | 17 |
+| minSdk / compileSdk | 26 / 34 |
+| 圆角 | 项目默认 24dp（DRS=24、RSB=28，二选一不混用） |
+| 强调蓝 | `#0A84FF` |
+
+### 硬规则（违反即返工）
+1. 改 GitHub 用在线 API，改完 GET 回读验证。
+2. 所有选项/开关/按钮用毛玻璃胶囊，禁原生 `Switch`/`RadioButton` 圆圈。
+3. 开关 `read → !write → 更新 selected`，`onCreate` `loadConfig()` 全量恢复。
+4. 二级界面纯黑底、顶部 48dp 让位状态栏、自绘「返回」`finish()`。
+5. 发版 `versionCode` + `versionName` 同增。
+6. 单选 `GlassRadioButton` 用 `setChecked`；`GlassCapsuleButton` 才用 `setGlassSelected`（§6 #28）。
+7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #27）。
+8. 平板左侧竖排导航必须让内容区让出宽度（§6 #29）。
+
+### 术语
+- **DRS / RSB**：两个历史项目名，圆角规范来源（DRS=24dp、RSB=28dp）。
+- **LSPosed**：Xposed 现代分发版，模块仓库发布见 §4、§6。
+- **GlassButtons**：毛玻璃组件库，见 §8。
+
+### 占位符（动手前必须全部替换成真实值）
+`{owner}` / `{repo}`、`{applicationId}` / `{包名}`、`{versionName}` / `{versionCode}`、`{proxy}`、各 `{占位符URL}`。
+
+---
+
 ## 1. 通用开发流程原则
 
 ### 1.1 提交与协作
@@ -381,7 +421,67 @@ nav.setOnItemSelectedListener(index -> { /* 处理切换 */ });
 - **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
 - 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
 
-**最小可运行 MainActivity 模板：**
+**纯代码路线 MainActivity 模板（无 XML、无 androidx，推荐新模块用）：**
+```java
+public class MainActivity extends Activity {
+    private SharedPreferences sp; private float d;
+    private int lang = 0;
+    private static final int R = 24; // 圆角 dp
+
+    @Override protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        sp = getSharedPreferences("demo", MODE_PRIVATE);
+        d = getResources().getDisplayMetrics().density;
+        lang = sp.getInt("lang", 0);
+
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF000000);
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPadding(dp(24), dp(48), dp(24), dp(120));
+
+        // 整行选项：label(14sp 灰) 在上 + 全宽胶囊
+        GlassCapsuleButton sw = new GlassCapsuleButton(this);
+        sw.setGlassCornerRadius(R);
+        sw.setText(sp.getBoolean("sw1", false) ? t("开","ON","ВКЛ") : t("关","OFF","ВЫКЛ"));
+        sw.setGlassSelected(sp.getBoolean("sw1", false));
+        sw.setOnClickListener(v -> {           // toggle 三步
+            boolean cur = sp.getBoolean("sw1", false);
+            sp.edit().putBoolean("sw1", !cur).apply();
+            sw.setGlassSelected(!cur);
+            sw.setText(!cur ? t("开","ON","ВКЛ") : t("关","OFF","ВЫКЛ"));
+        });
+        col.addView(sw, matchParent());
+
+        // 底部导航（GlassNavBar，不自写三按钮）
+        GlassNavBar nav = new GlassNavBar(this);
+        nav.setCornerRadius(R);
+        nav.addItem(icon(), t("导航一","Nav 1","Навигация 1"));
+        nav.addItem(icon(), t("导航二","Nav 2","Навигация 2"));
+        nav.addItem(icon(), t("导航三","Nav 3","Навигация 3"));
+        FrameLayout.LayoutParams np = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        np.gravity = Gravity.BOTTOM; np.bottomMargin = dp(24);
+        root.addView(new ScrollView(this){{ addView(col); }});
+        root.addView(nav, np);
+        setContentView(root);
+    }
+    private LinearLayout.LayoutParams matchParent() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dp(8); return lp;
+    }
+    private int dp(int v) { return Math.round(v * d); }
+    private String t(String zh,String en,String ru){ return lang==1?en:lang==2?ru:zh; }
+    private android.graphics.drawable.Drawable icon() {
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL); g.setColor(0xFFFFFFFF); return g;
+    }
+}
+```
+> 平板（`smallestScreenWidthDp>=600`）时：`nav.setOrientation(VERTICAL); setSideWidthDp(72f)`，内容 `paddingLeft` 让出约 120dp（§3.4/§6 #29）。
+
+**XML 路线 MainActivity 模板：**
 ```java
 public class MainActivity extends AppCompatActivity {
     private SharedPreferences sp;
