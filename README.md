@@ -531,20 +531,16 @@ public class MainActivity extends AppCompatActivity {
 
 **不要从零写所有文件。按这个顺序复制：**
 
-1. **从任意已有项目复制骨架**（推荐用 UIdemo2 或最近的项目）：
-   - `build.gradle`（根目录）
-   - `settings.gradle`
-   - `gradle/wrapper/gradle-wrapper.properties`
-   - `.github/workflows/build.yml`（CI 配置）
-   - `app/build.gradle`
-   - `app/src/main/AndroidManifest.xml`
+1. **从任意已有 Android 项目复制骨架**：
+   - 根 `build.gradle`（AGP + 插件版本）
+   - `settings.gradle`（仓库配置）
+   - `gradle/wrapper/gradle-wrapper.properties`（Gradle 版本）
+   - `.github/workflows/build.yml`（CI 构建配置）
+   - `app/build.gradle`（模块配置）
+   - `app/src/main/AndroidManifest.xml`（清单 + 主题）
    - `app/src/main/res/values/strings.xml`
-   - `app/src/main/res/values/themes.xml`
-   - `app/src/main/java/.../GlassNavBar.java`（最新磨砂版）
-   - `app/src/main/java/.../GlassCapsuleButton.java`
-   - `app/src/main/java/.../GlassRadioButton.java`
-   - `app/src/main/java/.../GlassButtonDrawable.java`
-   - `app/src/main/java/.../GlassButtonStyle.java`
+   - `app/src/main/res/values/themes.xml`（深色主题）
+   - 组件库 5 个 `.java` 文件 + `attrs.xml`
 
 2. **只改这 6 个地方：**
    - `applicationId`（build.gradle）
@@ -554,7 +550,7 @@ public class MainActivity extends AppCompatActivity {
    - 图标（可选）
    - 版本号（versionCode / versionName）
 
-3. **删掉旧业务代码**：MainActivity 里的旧选项，只留导航栏骨架
+3. **清空业务代码**：MainActivity 只留导航栏骨架，删掉旧选项
 
 **节省时间：** 不用每次写 build.gradle、Manifest、CI 配置，直接复制改包名
 
