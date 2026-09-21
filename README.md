@@ -56,6 +56,8 @@
 - **版本文件更新步骤加分支守卫**：`if: github.ref == 'refs/heads/main'`——否则**分支/PR 构建里 push main 会报 `refspec main does not match any`，直接失败、无产物**。
 - **版本文件更新步骤加 `continue-on-error: true`**：避免并发推送冲突拖垮整个构建。
 - 版本文件用 `paths-ignore` 排除：CI 自己提交版本文件的 commit 不要重复触发构建。
+- **Gradle 版本对齐 AGP**：AGP 8.5.2 要求 Gradle ≥ 8.7；wrapper 用 8.2 会报 `Minimum supported Gradle version is 8.7`。新模板 wrapper 统一用 **8.9**。
+- **settings.gradle 必须有 `dependencyResolutionManagement`**：否则 app 模块解析 aapt2 报 `Cannot resolve external dependency com.android.tools.build:aapt2 because no repositories are defined`。模板必须带 `google()` + `mavenCentral()`（pluginManagement 只影响 classpath，不影响模块依赖）。
 
 ### 2.3 签名
 - 生成**固定 keystore**，口令默认值写在 `build.gradle` 顶部、CI 用 secret 注入。
@@ -307,6 +309,11 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 21 | 导航栏选中项圆角和外层不贴合 | 选中项高亮用了全圆角(1000f) | 选中项高亮背景圆角必须和外层导航栏圆角一致(28dp) |
 | 22 | 玻璃按钮效果不对，只是纯色填充 | 只写了一层背景 | 必须用 GlassButtons 完整实现：5 层叠加（填充+高光+阴影+亮线+渐变描边） |
 | 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
+| 24 | 新模板报 `Minimum supported Gradle version is 8.7` | wrapper 8.2 太旧 | AGP 8.5.2 要求 Gradle ≥8.7，wrapper distributionUrl 改 gradle-8.9-bin.zip |
+| 25 | 报 `Cannot resolve aapt2, no repositories are defined` | settings.gradle 缺 dependencyResolutionManagement | settings.gradle 加 dependencyResolutionManagement { google(); mavenCentral() } |
+| 26 | 组件拷到子包后报 `package R does not exist` | 组件原同包引用 R，拷到 `.widget` 子包后找不到 | 每个用 R.styleable 的组件文件顶部加 `import <你的namespace>.R;` |
+| 27 | 弹窗内最后一个选项和底部取消/确认按钮重叠贴死 | 内容未用 ScrollView、按钮行无 topMargin | 弹窗内容用 ScrollView 包裹，按钮行加 topMargin 防粘连 |
+| 28 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
 
 ---
 
@@ -364,6 +371,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
    ```
 2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
 3. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
+   > **单文件拷贝坑**：组件原在 `com.gjr.glassbutton` 包下、R 同包。拷到新模块子包（如 `.widget`）后，`R.styleable.xxx` 找不到，必须在每个用 R 的组件文件（GlassCapsuleButton/GlassRadioButton/GlassNavBar）顶部加 `import <你的namespace>.R;`。见 §6 #26。
 
 **GlassNavBar 底部导航栏用法：**
 ```java
