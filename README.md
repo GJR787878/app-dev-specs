@@ -39,17 +39,18 @@
 | 圆角 | 项目默认 24dp（DRS=24、RSB=28，二选一不混用） |
 | 强调蓝 | `#0A84FF` |
 
-### 硬规则（违反即返工）
+### 硬规则（违反即返工，详细见对应章节）
 1. 改 GitHub 用在线 API，改完 GET 回读验证。
-2. 所有选项/开关/按钮用毛玻璃胶囊，禁原生 `Switch`/`RadioButton` 圆圈。
+2. 所有选项/开关/按钮用毛玻璃胶囊，禁原生 `Switch`/`RadioButton`（§3.6）。
 3. 开关 `read → !write → 更新 selected`，`onCreate` `loadConfig()` 全量恢复。
-4. 二级界面纯黑底、顶部 48dp 让位状态栏、自绘「返回」`finish()`。
-5. 发版 `versionCode` + `versionName` 同增。
-6. 单选 `GlassRadioButton` 用 `setChecked`；`GlassCapsuleButton` 才用 `setGlassSelected`（§6 #28）。
-7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #26）。
-8. **平板左侧竖排导航必须让内容区让出宽度**（§6 #27）：内容区 `paddingLeft` 约 120dp。
-9. **平板适配不能省**：断点 `smallestScreenWidthDp >= 600`，导航改左侧竖排胶囊，内容重排不拉伸（§3.4）。
-10. 导航栏浮底布局时，**padding 必须设置在内容 LinearLayout 上，不是 ScrollView**（§6 #24）。
+4. 二级界面纯黑底、顶部 48dp 让位状态栏、自绘「返回」`finish()`（§3.7）。
+5. 发版 `versionCode` + `versionName` 同增（§1.2）。
+6. 单选 `GlassRadioButton` 用 `setChecked()`；`GlassCapsuleButton` 才用 `setGlassSelected()`（§6 #28）。
+7. 弹窗内容包 `ScrollView`，按钮行加 `topMargin`（§6 #29）。
+8. 平板左侧竖排导航必须让内容区 `paddingLeft` 让出约 120dp（§6 #27）。
+9. 平板适配不能省：断点 `smallestScreenWidthDp >= 600`，导航改左侧竖排，内容重排不拉伸（§3.4）。
+10. 导航栏浮底布局时，`padding` 必须设置在内容 LinearLayout 上，不是 ScrollView（§6 #24）。
+11. 导航栏磨砂背景用**深色渐变**（70% 不透明深灰 → 60% 稍浅），不是透明白色（§3.6.1）。
 
 ### 术语
 - **DRS / RSB**：两个历史项目名，圆角规范来源（DRS=24dp、RSB=28dp）。
@@ -431,7 +432,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
    }
    // app/build.gradle
    dependencies {
-       implementation 'com.github.GJR787878:GlassButtons:v1.0.1'
+       implementation 'com.github.GJR787878:GlassButtons:v1.0.4'
    }
    ```
 2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
