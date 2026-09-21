@@ -85,7 +85,7 @@
 - **不要简单拉伸**——大屏下按钮布局、导航形态都要重排。
 - 断点判定（Android）：`smallestScreenWidthDp >= 600` 视为平板。
 - 平板常见做法：
-  - **导航**：底部导航可改为**屏幕左侧悬浮胶囊**（垂直居中、约半屏高、不铺满），主内容区让出导航宽度
+  - **导航**：底部导航可改为**屏幕左侧悬浮胶囊**（垂直居中、约半屏高、不铺满）。**必须同时让主内容区让出左侧宽度**——内容区 `paddingLeft = 导航宽(72) + 左边距(20) + 间距(约28) ≈ 120dp`，或改用水平 LinearLayout 左导航+右内容分列；否则悬浮导航会盖住内容（见 §6 #29）
   - **内容宽度上限**：设最大内容宽（如 760dp），避免长文本整行拉伸
   - **按钮网格化**：竖排的按钮组在大屏改为**横排一行 / 网格**（等宽 + weight），关键分组保持成行
   - 长内容列表/网格：大屏用多列布局
@@ -317,6 +317,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 26 | 构建 | 组件拷到子包后报 `package R does not exist` | 组件原同包引用 R，拷到 `.widget` 子包后找不到 | 每个用 R.styleable 的组件文件顶部加 `import <你的namespace>.R;` |
 | 27 | UI | 弹窗内最后一个选项和底部取消/确认按钮重叠贴死 | 内容未用 ScrollView、按钮行无 topMargin | 弹窗内容用 ScrollView 包裹，按钮行加 topMargin 防粘连 |
 | 28 | 构建 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
+| 29 | UI | 平板左侧竖排导航悬浮盖住内容 | 只把导航挪到左侧，内容区没让出宽度 | 内容区 `paddingLeft` 让出导航宽+边距+间距（约120dp），或水平 LinearLayout 左右分列 |
 
 ---
 
