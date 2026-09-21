@@ -383,6 +383,20 @@ nav.setSelected(0);
 nav.setOnItemSelectedListener(index -> { /* 处理切换 */ });
 ```
 > 选中项高亮背景圆角必须和导航栏外层一致（28dp），不能用全圆角。见 §6 踩坑 #21。
+>
+> **组件库坑（已踩，单文件拷贝必改）**：`GlassButtonStyle.createSelectedHighlight()` 原实现写死 `setCornerRadius(1000f)` 全圆角，拷过来不改就会左右突出。必须改成带圆角参数的重载，并在 `GlassNavBar.updateItemStyle()` 里传入自身圆角：
+> ```java
+> // GlassButtonStyle：加圆角参数重载
+> public static GradientDrawable createSelectedHighlight(float cornerRadiusPx) {
+>     GradientDrawable bg = new GradientDrawable();
+>     bg.setColor(COLOR_TAB_SELECTED_BG);
+>     bg.setCornerRadius(cornerRadiusPx);
+>     return bg;
+> }
+> // GlassNavBar.updateItemStyle()：传外层圆角
+> float radiusPx = mCornerRadiusDp * getResources().getDisplayMetrics().density;
+> item.setBackground(GlassButtonStyle.createSelectedHighlight(radiusPx));
+> ```
 
 - **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
 - 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
