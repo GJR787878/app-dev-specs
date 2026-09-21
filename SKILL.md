@@ -32,7 +32,7 @@ wc -l /tmp/dev-specs.md  # 确认总行数
 | AGP | **8.5.2** |
 | Gradle | **8.9**（wrapper） |
 | JDK | 17 |
-| minSdk / compileSdk | 26 / 34 |
+| minSdk / compileSdk | **31**（Android 12+，以后只开发这个及以上） / 34 |
 | 圆角 | 24dp（DRS）或 28dp（RSB），项目内统一 |
 
 ### UI（§3.6 硬性要求）

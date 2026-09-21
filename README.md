@@ -35,7 +35,7 @@
 | AGP | **8.5.2** |
 | Gradle | **8.9**（wrapper；AGP 8.5.x 要求 ≥8.7） |
 | JDK | 17 |
-| minSdk / compileSdk | 26 / 34 |
+| minSdk / compileSdk | **31**（Android 12+，以后只开发这个及以上） / 34 |
 | 圆角 | 项目默认 24dp（DRS=24、RSB=28，二选一不混用） |
 | 强调蓝 | `#0A84FF` |
 
