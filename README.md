@@ -120,7 +120,7 @@
 
 - **纯黑背景**，无卡片、无分组背景色
 - 标题在胶囊上方，左对齐，14sp 灰色 `#CCCCCC`
-- 胶囊全宽 `match_parent`，圆角统一值（DRS 24dp、RSB 28dp）
+- 胶囊全宽 `match_parent`，圆角统一值（项目默认 24dp；DRS=24dp、RSB=28dp，按项目取其一，别混用）
 - 胶囊内文字居中，显示当前值或操作文字
 
 **禁止样式：**
@@ -146,9 +146,9 @@
 | **确认操作** | 检查更新、清除数据 | 弹窗确认（圆角毛玻璃） |
 
 #### A. 单选选项（互斥）
-- 容器用 `RadioGroup`；每个选项是 `RadioButton`，必须 `setButtonDrawable(null)` 去掉原生圆圈。
-- 背景 `GlassButtonDrawable(圆角dp, 1dp, false)`。
-- 点击后**遍历同组所有项**重算选中态：选中项 `setGlassSelected(true)` + 文字蓝，其余 `setGlassSelected(false)` + 文字白。
+- 用 `GlassRadioButton`（组件内部已 `setButtonDrawable(null)` 去原生圆圈，**无需手动调**）。容器可用 `RadioGroup`，也可用普通 `LinearLayout` 手动遍历互斥。
+- **选中 API 是 `setChecked(boolean)`，不是 `setGlassSelected`**——`GlassRadioButton` 继承 `RadioButton`、没有 `setGlassSelected`，调了会编译失败（见 §6 #28）。
+- 点击后**遍历同组所有项**重算选中态：选中项 `setChecked(true)` + 文字蓝，其余 `setChecked(false)` + 文字白。
 - 竖排 `MATCH_PARENT`、上下间距约 12dp；平板横排用 `weight=1` 等宽 + 左右 6dp 间距。
 
 #### B. 开始/关闭开关（独立布尔）
@@ -166,7 +166,9 @@
 
 #### 二级菜单样式
 - **整页**：标题在上，下方全宽玻璃胶囊列表，点选即返回
-- **弹窗**：圆角毛玻璃弹窗，标题+说明在上，底部并排两个玻璃按钮（取消/确认）
+- **弹窗**：圆角毛玻璃弹窗，标题+说明在上，底部并排两个玻璃按钮（取消/确认）。
+  - 选项多时**内容必须包 `ScrollView`**，防小屏溢出/被裁剪（见 §6 #27）。
+  - 底部按钮行加 `topMargin`（约 16dp），**不得与最后一个选项粘连重叠**（见 §6 #27）。
 
 #### D. 底部导航栏（GlassNavBar）
 
@@ -241,11 +243,11 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 
 | 优先级 | 通道 | URL 形态（`{占位符}`） | 适用 |
 |---|---|---|---|
-| 1 | 上游 API | `https://api.github.com/repos/{owner}/{repo}/releases/latest`（读 `tag_name`） | 海外/能直连 |
-| 2 | 代理/镜像 API | `https://{proxy}/api.github.com/repos/{owner}/{repo}/releases/latest` | 国内主通道 |
-| 3 | 版本文件（CDN/代理） | `https://{proxy}/repos/{owner}/{repo}/latest_version.txt?t={ts}` | **国内主要通道**，读纯文本版本号 |
-| 4 | 页面 302 重定向 | `https://github.com/{owner}/{repo}/releases/latest`（跟随重定向取 tag） | 无 API 可用时 |
-| 5 | IP 直连兜底 | 版本文件 `raw.githubusercontent.com` 的 IP 直连 | 绕过 DNS 污染 |
+| 1 | 安装 | 上游 API | `https://api.github.com/repos/{owner}/{repo}/releases/latest`（读 `tag_name`） | 海外/能直连 |
+| 2 | 安装 | 代理/镜像 API | `https://{proxy}/api.github.com/repos/{owner}/{repo}/releases/latest` | 国内主通道 |
+| 3 | 安装 | 版本文件（CDN/代理） | `https://{proxy}/repos/{owner}/{repo}/latest_version.txt?t={ts}` | **国内主要通道**，读纯文本版本号 |
+| 4 | 发布 | 页面 302 重定向 | `https://github.com/{owner}/{repo}/releases/latest`（跟随重定向取 tag） | 无 API 可用时 |
+| 5 | 发布 | IP 直连兜底 | 版本文件 `raw.githubusercontent.com` 的 IP 直连 | 绕过 DNS 污染 |
 
 - 通道 1/2 属「API 型」，通道 3/5 属「版本文件型」；两者都取到后以**版本文件型为准**并做一次交叉校验，避免 API 返回被污染。
 
@@ -257,7 +259,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 
 ### 4.4 安装（Android 8+）
 - 权限：`REQUEST_INSTALL_PACKAGES`。
-- 用 `androidx.core.content.FileProvider` 提供 `content://` URI。
+- 用 `androidx.core.content.FileProvider` 提供 `content://` URI。**FileProvider 是 androidx 独有、framework 没有**：纯 framework 项目要装 APK，加这一个依赖即可（`implementation 'androidx.core:core:1.13.1'`），不引入其他 androidx。
 - `res/xml/file_paths.xml` 声明下载目录与缓存目录。
 - FileProvider authority = `{applicationId}.fileprovider`，并在 Manifest 声明 `<provider>`。
 - 安装 Intent：`ACTION_VIEW` + `application/vnd.android.package-archive` + `FLAG_GRANT_READ_URI_PERMISSION` + `FLAG_ACTIVITY_NEW_TASK`。
@@ -279,41 +281,42 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 - [ ] 产物验签指纹匹配
 - [ ] 升级检测各通道（§4.2）实测均能取到新版本，且页面「检查更新」可弹出新版
 - [ ] 变更说明 / 发布正文已写好（含中文）
+- [ ] **UI 自检**：开关/弹窗/二级界面在小屏不溢出不重叠；无浅色弹窗；平板断点重排生效；三语言无截断
 
 ---
 
 ## 6. 常见坑（通用故障排查表）
 
-| # | 症状 | 原因 | 解决 |
-|---|---|---|---|
-| 1 | 安装显示「重新安装」 | versionCode 未递增 | 发版前递增 versionCode + versionName |
-| 2 | 装完后不弹安装界面 | 缺安装权限 | Manifest 加 `REQUEST_INSTALL_PACKAGES` |
-| 3 | 下载慢/白等很久 | 直连优先、超时太长 | 代理优先 + 短超时 + 直连兜底 |
-| 4 | 检测不到新版本 | 版本文件没更新 | 发版必须更新 `latest_version.txt` |
-| 5 | CDN 返回旧版本 | 缓存 | URL 加 `?t={timestamp}` |
-| 6 | 安装时崩溃 | FileProvider authority 不匹配 | authority = `{applicationId}.fileprovider`，与 Manifest 一致 |
-| 7 | 分支/PR 构建失败无产物 | 版本文件步骤 push 默认分支失败 | 该步骤加 `if: github.ref == 'refs/heads/{默认分支}'` |
-| 8 | CI 更新版本文件冲突 | 并发推送 | 该步骤加 `continue-on-error: true` |
-| 9 | 本地文件与线上不同步 | 误以为本地已改 | 用 API 改完必须 GET 复核 |
-| 10 | 系统弹窗白底，与深色 UI 不统一 | 无全局深色主题 | 设 `AppTheme` + 深色弹窗主题 |
-| 11 | 大屏布局被简单拉伸、不协调 | 无断点适配 | 断点重排 + 按钮网格化 + 导航形态切换 |
-| 12 | LSPosed 仓库 Latest 不更新 | tag 格式不对 | tag 必须是 `{versionCode}-{versionName}`，不是 `v{versionName}` |
-| 13 | LSPosed 仓库有 release 但下载不到 APK | release 没上传 asset | 创建 release 时必须同时上传 APK 附件 |
-| 14 | LSPosed 仓库有新 release 但不显示为 Latest | 没设 make_latest | 用 API PATCH `releases/{id}` 设 `make_latest=true` |
-| 15 | LSPosed 更新检测不到新版本 | 缺 latest_version.txt | 仓库根目录放 `latest_version.txt`，内容为纯版本号 |
-| 16 | 自己仓库 release 没 APK asset | release 是空 release | 从 CI artifacts 下载 APK，或发布时直接附带 |
-| 17 | 新模块在 LSPosed 索引里搜不到 | 缺 SUMMARY/SCOPE/SOURCE_URL/ADDITIONAL_AUTHORS 文件 | 仓库根目录必须放这 4 个文件，否则不收录 |
-| 18 | LSPosed 索引不更新 | 普通 push 不触发 build | 必须重新打 tag 或重新创建 release 触发 bot |
-| 19 | 模块在索引里不显示 | description 为空 | 仓库 description 不能为空，会被过滤掉 |
-| 20 | 索引已 build 成功但搜不到 | CDN 缓存 | 等 5-10 分钟 CDN 自动刷新 |
-| 21 | 导航栏选中项圆角和外层不贴合 | 选中项高亮用了全圆角(1000f) | 选中项高亮背景圆角必须和外层导航栏圆角一致(28dp) |
-| 22 | 玻璃按钮效果不对，只是纯色填充 | 只写了一层背景 | 必须用 GlassButtons 完整实现：5 层叠加（填充+高光+阴影+亮线+渐变描边） |
-| 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
-| 24 | 新模板报 `Minimum supported Gradle version is 8.7` | wrapper 8.2 太旧 | AGP 8.5.2 要求 Gradle ≥8.7，wrapper distributionUrl 改 gradle-8.9-bin.zip |
-| 25 | 报 `Cannot resolve aapt2, no repositories are defined` | settings.gradle 缺 dependencyResolutionManagement | settings.gradle 加 dependencyResolutionManagement { google(); mavenCentral() } |
-| 26 | 组件拷到子包后报 `package R does not exist` | 组件原同包引用 R，拷到 `.widget` 子包后找不到 | 每个用 R.styleable 的组件文件顶部加 `import <你的namespace>.R;` |
-| 27 | 弹窗内最后一个选项和底部取消/确认按钮重叠贴死 | 内容未用 ScrollView、按钮行无 topMargin | 弹窗内容用 ScrollView 包裹，按钮行加 topMargin 防粘连 |
-| 28 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
+| # | 类别 | 症状 | 原因 | 解决 |
+|---|---|---|---|---|
+| 1 | 安装 | 安装显示「重新安装」 | versionCode 未递增 | 发版前递增 versionCode + versionName |
+| 2 | 安装 | 装完后不弹安装界面 | 缺安装权限 | Manifest 加 `REQUEST_INSTALL_PACKAGES` |
+| 3 | 安装 | 下载慢/白等很久 | 直连优先、超时太长 | 代理优先 + 短超时 + 直连兜底 |
+| 4 | 发布 | 检测不到新版本 | 版本文件没更新 | 发版必须更新 `latest_version.txt` |
+| 5 | 发布 | CDN 返回旧版本 | 缓存 | URL 加 `?t={timestamp}` |
+| 6 | 安装 | 安装时崩溃 | FileProvider authority 不匹配 | authority = `{applicationId}.fileprovider`，与 Manifest 一致 |
+| 7 | 构建 | 分支/PR 构建失败无产物 | 版本文件步骤 push 默认分支失败 | 该步骤加 `if: github.ref == 'refs/heads/{默认分支}'` |
+| 8 | 构建 | CI 更新版本文件冲突 | 并发推送 | 该步骤加 `continue-on-error: true` |
+| 9 | 构建 | 本地文件与线上不同步 | 误以为本地已改 | 用 API 改完必须 GET 复核 |
+| 10 | UI | 系统弹窗白底，与深色 UI 不统一 | 无全局深色主题 | 设 `AppTheme` + 深色弹窗主题 |
+| 11 | UI | 大屏布局被简单拉伸、不协调 | 无断点适配 | 断点重排 + 按钮网格化 + 导航形态切换 |
+| 12 | LSPosed | LSPosed 仓库 Latest 不更新 | tag 格式不对 | tag 必须是 `{versionCode}-{versionName}`，不是 `v{versionName}` |
+| 13 | LSPosed | LSPosed 仓库有 release 但下载不到 APK | release 没上传 asset | 创建 release 时必须同时上传 APK 附件 |
+| 14 | LSPosed | LSPosed 仓库有新 release 但不显示为 Latest | 没设 make_latest | 用 API PATCH `releases/{id}` 设 `make_latest=true` |
+| 15 | LSPosed | LSPosed 更新检测不到新版本 | 缺 latest_version.txt | 仓库根目录放 `latest_version.txt`，内容为纯版本号 |
+| 16 | LSPosed | 自己仓库 release 没 APK asset | release 是空 release | 从 CI artifacts 下载 APK，或发布时直接附带 |
+| 17 | LSPosed | 新模块在 LSPosed 索引里搜不到 | 缺 SUMMARY/SCOPE/SOURCE_URL/ADDITIONAL_AUTHORS 文件 | 仓库根目录必须放这 4 个文件，否则不收录 |
+| 18 | LSPosed | LSPosed 索引不更新 | 普通 push 不触发 build | 必须重新打 tag 或重新创建 release 触发 bot |
+| 19 | LSPosed | 模块在索引里不显示 | description 为空 | 仓库 description 不能为空，会被过滤掉 |
+| 20 | LSPosed | 索引已 build 成功但搜不到 | CDN 缓存 | 等 5-10 分钟 CDN 自动刷新 |
+| 21 | UI | 导航栏选中项圆角和外层不贴合 | 选中项高亮用了全圆角(1000f) | 选中项高亮背景圆角必须和外层导航栏圆角一致(28dp) |
+| 22 | UI | 玻璃按钮效果不对，只是纯色填充 | 只写了一层背景 | 必须用 GlassButtons 完整实现：5 层叠加（填充+高光+阴影+亮线+渐变描边） |
+| 23 | 构建 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
+| 24 | 构建 | 新模板报 `Minimum supported Gradle version is 8.7` | wrapper 8.2 太旧 | AGP 8.5.2 要求 Gradle ≥8.7，wrapper distributionUrl 改 gradle-8.9-bin.zip |
+| 25 | 构建 | 报 `Cannot resolve aapt2, no repositories are defined` | settings.gradle 缺 dependencyResolutionManagement | settings.gradle 加 dependencyResolutionManagement { google(); mavenCentral() } |
+| 26 | 构建 | 组件拷到子包后报 `package R does not exist` | 组件原同包引用 R，拷到 `.widget` 子包后找不到 | 每个用 R.styleable 的组件文件顶部加 `import <你的namespace>.R;` |
+| 27 | UI | 弹窗内最后一个选项和底部取消/确认按钮重叠贴死 | 内容未用 ScrollView、按钮行无 topMargin | 弹窗内容用 ScrollView 包裹，按钮行加 topMargin 防粘连 |
+| 28 | 构建 | GlassRadioButton 调 setGlassSelected 编译不过 | 它继承 RadioButton，选中 API 是 setChecked | 单选用 `setChecked(boolean)`；GlassCapsuleButton 才是 `setGlassSelected` |
 
 ---
 
@@ -330,6 +333,36 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 - [ ] **更新机制**：多通道检测 + 下载镜像顺序 + 安装（FileProvider/权限/Intent）
 - [ ] **平板/大屏适配**：断点判定 + 导航/按钮重排，不做简单拉伸
 - [ ] **发布**：先出包审核 → 合并 → 双通道发布 + 更新版本文件 + 核对清单（§5）
+
+**最小工程骨架（AGP 8.5.x / Gradle 8.9，照抄改占位符）：**
+```groovy
+// settings.gradle（必须有 dependencyResolutionManagement，否则 aapt2 解析失败，见 §6 #25）
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
+rootProject.name = "{工程名}"
+include ':app'
+
+// app/build.gradle
+plugins { id 'com.android.application' }
+android {
+    namespace '{包名}'
+    compileSdk 34
+    defaultConfig {
+        applicationId "{包名}"
+        minSdk 26; targetSdk 34
+        versionCode 1; versionName "0.1.0"
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+// gradle/wrapper/gradle-wrapper.properties
+// distributionUrl=.../gradle-8.9-bin.zip   （AGP 8.5.x 要求 Gradle ≥8.7，见 §6 #24）
+```
 
 ---
 
@@ -369,6 +402,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
        implementation 'com.github.GJR787878:GlassButtons:v1.0.1'
    }
    ```
+   > JitPack 按 tag 解析；组件库当前 tag 到 `v1.0.1`（未发 GitHub Release 也能用）。若 JitPack 解析失败，改用方式 3 单文件拷贝。
 2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
 3. **单文件拷贝（零依赖）**：直接拷贝 `GlassButtonDrawable/GlassButtonStyle/GlassCapsuleButton/GlassRadioButton/GlassNavBar` 五个 `.java` 到项目（XML 调用还需 `attrs.xml`）
    > **单文件拷贝坑**：组件原在 `com.gjr.glassbutton` 包下、R 同包。拷到新模块子包（如 `.widget`）后，`R.styleable.xxx` 找不到，必须在每个用 R 的组件文件（GlassCapsuleButton/GlassRadioButton/GlassNavBar）顶部加 `import <你的namespace>.R;`。见 §6 #26。
@@ -401,9 +435,9 @@ nav.setOnItemSelectedListener(index -> { /* 处理切换 */ });
 - **平板导航复用**：`GlassNavBar` 既可做底部导航，也可在平板作为**左侧悬浮胶囊导航**（垂直居中、约半屏高），与 §3.4 平板规范配套。
 - 开新项目：把该组件库作为玻璃风格 UI 的**唯一来源**，新按钮/导航一律用它，不另起样式。
 
-**最小可运行 MainActivity 模板：**
+**最小可运行 MainActivity 模板（纯代码 / 无 androidx 路线）：**
 ```java
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity {
     private SharedPreferences sp;
 
     @Override
