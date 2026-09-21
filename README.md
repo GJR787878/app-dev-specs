@@ -36,7 +36,7 @@
 | Gradle | **8.9**（wrapper；AGP 8.5.x 要求 ≥8.7） |
 | JDK | 17 |
 | minSdk / compileSdk | **31**（Android 12+，以后只开发这个及以上） / 34 |
-| 圆角 | 项目默认 24dp（DRS=24、RSB=28，二选一不混用） |
+| 圆角 | 项目统一用 24dp 或 28dp，二选一不混用 |
 | 强调蓝 | `#0A84FF` |
 
 ### 硬规则（违反即返工，详细见对应章节）
@@ -53,7 +53,7 @@
 11. 导航栏磨砂背景用**深色渐变**（70% 不透明深灰 → 60% 稍浅），不是透明白色（§3.6.1）。
 
 ### 术语
-- **DRS / RSB**：两个历史项目名，圆角规范来源（DRS=24dp、RSB=28dp）。
+- **圆角规范**：项目统一用 24dp 或 28dp，二选一不混用。
 - **LSPosed**：Xposed 现代分发版，模块仓库发布见 §4、§6。
 - **GlassButtons**：毛玻璃组件库，见 §8。
 
@@ -164,7 +164,7 @@
 
 - **纯黑背景**，无卡片、无分组背景色
 - 标题在胶囊上方，左对齐，14sp 灰色 `#CCCCCC`
-- 胶囊全宽 `match_parent`，圆角统一值（DRS 24dp、RSB 28dp）
+- 胶囊全宽 `match_parent`，圆角统一值（项目内选 24dp 或 28dp）
 - 胶囊内文字居中，显示当前值或操作文字
 
 **禁止样式：**
@@ -410,9 +410,9 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
   - 源码（组件目录）：`glassbutton/src/main/java/com/gjr/glassbutton/`
   - 最新 Release / demo APK：https://github.com/GJR787878/GlassButtons/releases/latest
   - 历史版本：https://github.com/GJR787878/GlassButtons/releases
-- **定位**：苹果风格毛玻璃半透明按钮组件库（抽自 RamStatusBar），纯 Java + Android framework，无第三方依赖。
+- **定位**：苹果风格毛玻璃半透明按钮组件库（抽自实战项目），纯 Java + Android framework，无第三方依赖。
 - **组件**：`GlassCapsuleButton` / `GlassRadioButton` / `GlassNavBar` / `GlassButtonDrawable` / `GlassButtonStyle`。
-- **圆角规范对应**：组件默认 28dp；接入时按项目设定——**DRS 用 24dp、RSB 用 28dp**（构造参数或 `app:glassCornerRadius`）。
+- **圆角规范对应**：组件默认 28dp；接入时按项目设定——选 24dp 或 28dp，二选一（构造参数或 `app:glassCornerRadius`）。
 
 **【硬规则】禁止手写简化版玻璃 Drawable**
 - 自己写的"半透明+描边"只是纯色填充，没有 5 层玻璃效果
