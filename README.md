@@ -246,12 +246,17 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 
 > 导航栏（GlassNavBar）的背景效果规范，和选项胶囊的玻璃效果不同。
 
-**磨砂背景参数：**
+**磨砂背景参数（上白下透）：**
 - 渐变方向：上浅下深（`GradientDrawable.Orientation.TOP_BOTTOM`）
-- 顶部色：`0xB32C2C2E`（70% 不透明深灰）
-- 底部色：`0x993C3C3E`（60% 不透明稍浅深灰）
+- 顶部色：`0xF06A6A72`（94% 不透明，比较白的深灰，泛白磨砂感）
+- 底部色：`0x882C2C2E`（53% 不透明，更透明更深）
 - 边框：1dp 淡白 `0x55FFFFFF`
 - 圆角：和外层一致（24dp 或 28dp）
+
+**为什么上白下透：**
+- 导航栏顶部靠近屏幕边缘，需要更白更实，压住顶部内容
+- 导航栏底部靠近屏幕底部，需要更透，让背景内容透出来
+- 这样视觉上有"磨砂玻璃悬浮在内容上"的感觉，不是一块死板的深色板
 
 **禁止：**
 - ❌ 纯透明白色背景（会太白，不像玻璃）
@@ -382,6 +387,11 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 31 | 复制 Java 文件后包名不对，R 类找不到 | 只复制了文件没改包名 | 复制后必须批量替换包名，`grep` 校验无残留旧包名 |
 | 32 | 弹窗直角不是圆角，与胶囊按钮不统一 | 弹窗 `windowBackground` 设了纯色 | 弹窗窗口背景用圆角 GradientDrawable（`res/drawable/dialog_bg.xml`，半径与按钮一致，§3.6 圆角毛玻璃弹窗） |
 | 33 | 改完手册/文件后 raw 链接返回旧内容 | raw.githubusercontent.com CDN 缓存 | 验证用 contents API（GET /contents，实时）或 raw URL 加 `?ts={timestamp}`，不要只信 raw 结果 |
+| 34 | 新项目构建报 AndroidX 相关错误 | 缺 `gradle.properties` 文件 | 新项目必须创建 `gradle.properties`，写入 `android.useAndroidX=true` 和 `android.nonTransitiveRClass=true` |
+| 35 | 用了 GlassButtons 依赖后编译报 `cannot find symbol` | Java 文件没 import | 所有用到 GlassCapsuleButton/GlassRadioButton/GlassNavBar 的 Java 文件，必须手动加 `import com.gjr.glassbutton.*;` |
+| 36 | `setBackgroundBlurRadius()` 调用闪退 DecorView null | 在 `setContentView` 之前调用 | 必须在 `setContentView(root)` 之后调用，此时 DecorView 才初始化完成 |
+| 37 | 真高斯模糊（`setBackgroundBlurRadius`）几乎没效果 | 只能模糊 Window 背后（桌面），不能模糊 Activity 内部内容 | 放弃真高斯模糊，用半透明深色渐变模拟磨砂效果（§3.6.1） |
+| 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
 
 ---
 
