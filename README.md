@@ -461,7 +461,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
    }
    // app/build.gradle
    dependencies {
-       implementation 'com.github.GJR787878:GlassButtons:v1.0.4'
+       implementation 'com.github.GJR787878:GlassButtons:v1.0.5'
    }
    ```
 2. **Library 模块依赖**：拷贝 `glassbutton/` → `settings.gradle` 加 `include ':glassbutton'` → app 依赖 `implementation project(':glassbutton')`
@@ -643,6 +643,7 @@ public class MainActivity extends AppCompatActivity {
 | 2026-09-23 | — | 修正导航栏磨砂参数统一为**上白下透** `0xF06A6A72`→`0x882C2C2E`（§3.6.1 / §0.5 #11 / §6 #30 同步，SKILL.md 缓存一并纠正）|
 | 2026-09-23 | — | 新增 §6 #36 xposed_init 入口类同步、#37 旧包名模块残留；合并原 #26/#36/#37 真模糊条目 |
 | 2026-09-23 | — | 新增 §0.5 硬规则 #12（xposed_init 必须 = MainHook 实际包名）|
+| 2026-09-23 | — | GlassButtons 升级 v1.0.5（GlassNavBar 磨砂参数上白下透），手册 §8 / SKILL.md 引用版本同步 |
 
 ---
 
