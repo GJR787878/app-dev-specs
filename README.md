@@ -82,6 +82,25 @@
 
 ---
 
+
+### 1.3.1 LSPosed 模块仓库（modules.lsposed.org）发布实战
+LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/io.github.gjr787878.ramstatusbar`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
+
+发布新版本必须**两步都做**（只做一步，索引不更新）：
+1. **同步元数据文件**到镜像仓库 main 分支：
+   - `latest_version.txt`：纯版本号（如 `1.5.4`），无换行问题
+   - `README.md`：从主仓库同步最新内容（功能说明会显示在索引详情页）
+   - `SUMMARY` / `SCOPE` / `SOURCE_URL` / `ADDITIONAL_AUTHORS`：与模块一致
+2. **在镜像仓库发 Release**（关键！只更新文件不会显示）：
+   - tag：`{versionCode}-{versionName}`（如 `36-1.5.4`），指向镜像仓库 main 最新 commit
+   - name：`v{versionName}`；body：changelog（不能为空）
+   - **必须上传 APK asset**：从主仓库 Release 下载同款 APK，POST 到 releases/{id}/assets
+
+发完 release，官方 bot 自动触发 `Xposed-Modules-Repo/modules` 的 tag workflow 验证 APK（看 Actions 确认 success）。索引站点随后重建，README 承诺 5 分钟内显示，实测可能有分钟级~小时级延迟；验证抓 `https://modules.lsposed.org/module/{包名}` 页面或直接抓镜像仓库 releases API。
+
+**血泪教训**：v1.5.0 只同步了文件、没在镜像仓库发 Release → 索引下载按钮长期卡在 `28-1.4.15`；补发 `36-1.5.4` Release + APK 后 bot 立刻确认。发布完必须在两处都核对 Latest。
+
+---
 ## 2. 构建与 CI（无本地环境时）
 
 > 通用模板：`main` 分支 push 触发构建；需要时对 `v*` tag 触发自动发版。
