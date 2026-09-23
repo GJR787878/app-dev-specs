@@ -18,7 +18,7 @@
 
 ## 0.5 动手前速查（AI 必读，一页纸）
 
-> **首次开发 app 时，必须完整读完本手册全文（约 500 行）再动手。**
+> **首次开发 app 时，必须完整读完本手册全文（约 640 行）再动手。**
 > 本节只是摘要，完整规则见对应章节。
 
 ### 按任务走，别漏读
@@ -50,7 +50,8 @@
 8. 平板左侧竖排导航必须让内容区 `paddingLeft` 让出约 120dp（§6 #27）。
 9. 平板适配不能省：断点 `smallestScreenWidthDp >= 600`，导航改左侧竖排，内容重排不拉伸（§3.4）。
 10. 导航栏浮底布局时，`padding` 必须设置在内容 LinearLayout 上，不是 ScrollView（§6 #24）。
-11. 导航栏磨砂背景用**深色渐变**（70% 不透明深灰 → 60% 稍浅），不是透明白色（§3.6.1）。
+11. 导航栏磨砂背景用**上白下透渐变**：顶部 `0xF06A6A72`（94% 白灰）→ 底部 `0x882C2C2E`（53% 更深更透）（§3.6.1）。
+12. LSPosed 模块必须有 `assets/xposed_init`，**内容必须 = MainHook 实际全限定类名**；迁移包名后必须同步改，否则 `ClassNotFoundException` → 重启后整个 hook 失效（§6 #36）。
 
 ### 术语
 - **圆角规范**：项目统一用 24dp 或 28dp，二选一不混用。
@@ -77,11 +78,8 @@
 
 ### 1.3 双通道发布
 - 常规发布到**自有仓库 Release**（tag `v{version}`）。
-- 若产品投放到**分发/模块仓库**（如 LSPosed 模块仓库），另行发布一份，tag 建议格式 `{versionCode}-{version}`，并上传与主仓库一致的产物。
+- 若产品投放到**分发/模块仓库**（如 LSPosed 模块仓库），另行发布一份，tag 格式 `{versionCode}-{versionName}`，并上传与主仓库一致的产物（完整流程见 §1.3.1）。
 - 发布后两处都要核对为 `Latest`。
-
----
-
 
 ### 1.3.1 LSPosed 模块仓库（modules.lsposed.org）发布实战
 LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/io.github.gjr787878.ramstatusbar`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
@@ -398,18 +396,18 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 23 | 新编译项目报 R 类找不到 | 缺 attrs.xml 自定义属性 | 用 GlassCapsuleButton/GlassNavBar 必须同时拷贝 attrs.xml 到 res/values/ |
 | 24 | 导航栏浮底布局，最后几个选项被导航栏挡住 | padding 设置在 ScrollView 上，不是内容 LinearLayout 上 | padding 必须设置在内容 LinearLayout 上（paddingBottom≈140dp），ScrollView 高度是 match_parent 时 paddingBottom 不生效 |
 | 25 | 导航栏背景看起来是黑色不透明 | 用了简单 GradientDrawable，没有玻璃效果 | 导航栏背景必须用 GlassButtonDrawable（5层玻璃效果），不是简单 GradientDrawable |
-| 26 | `setBackgroundBlurRadius()` 直接调用闪退 | 普通 Activity 不能直接用 Window 背景模糊 API | 这个 API 需要特殊窗口配置（透明 Window），普通 Activity 直接调用会闪退。导航栏毛玻璃效果用半透明深色渐变模拟即可，不需要真模糊 |
+| 26 | `setBackgroundBlurRadius()` 直接调用闪退 / 没效果 | 普通 Activity 不能直接用 Window 背景模糊 API | 真高斯模糊需要特殊窗口配置，且只能模糊 Window 背后（桌面），模糊不了 Activity 内部内容；普通 Activity 调用会闪退（DecorView null 或窗口配置不支持）。**放弃真模糊**，用 §3.6.1 半透明渐变模拟磨砂效果 |
 | 27 | 平板导航左侧竖排后内容被挡住 | 内容区没有让出左侧宽度 | 平板左侧竖排导航时，内容区 `paddingLeft` 必须让出约 120dp（`smallestScreenWidthDp >= 600` 时自动加） |
 | 28 | 单选按钮状态不对 | 用了 `setGlassSelected()` 而不是 `setChecked()` | `GlassRadioButton` 用 `setChecked()`；`GlassCapsuleButton` 才用 `setGlassSelected()` |
 | 29 | 弹窗内容被键盘挡住 | 弹窗内容没包 ScrollView | 弹窗内容必须包 `ScrollView`，按钮行加 `topMargin`（≥16dp） |
-| 30 | 导航栏磨砂效果太白，不像玻璃 | 用了纯透明白色背景 | 导航栏磨砂背景应该是**深色渐变**（70% 不透明深灰 → 60% 稍浅深灰），不是透明白色泛底 |
+| 30 | 导航栏磨砂效果太白，不像玻璃 | 用了纯透明白色背景或旧版深色参数 | 导航栏磨砂背景用**上白下透渐变**：顶部 `0xF06A6A72`（94% 白灰）→ 底部 `0x882C2C2E`（53% 更深更透），不是纯白、不是纯深色（§3.6.1） |
 | 31 | 复制 Java 文件后包名不对，R 类找不到 | 只复制了文件没改包名 | 复制后必须批量替换包名，`grep` 校验无残留旧包名 |
 | 32 | 弹窗直角不是圆角，与胶囊按钮不统一 | 弹窗 `windowBackground` 设了纯色 | 弹窗窗口背景用圆角 GradientDrawable（`res/drawable/dialog_bg.xml`，半径与按钮一致，§3.6 圆角毛玻璃弹窗） |
 | 33 | 改完手册/文件后 raw 链接返回旧内容 | raw.githubusercontent.com CDN 缓存 | 验证用 contents API（GET /contents，实时）或 raw URL 加 `?ts={timestamp}`，不要只信 raw 结果 |
 | 34 | 新项目构建报 AndroidX 相关错误 | 缺 `gradle.properties` 文件 | 新项目必须创建 `gradle.properties`，写入 `android.useAndroidX=true` 和 `android.nonTransitiveRClass=true` |
 | 35 | 用了 GlassButtons 依赖后编译报 `cannot find symbol` | Java 文件没 import | 所有用到 GlassCapsuleButton/GlassRadioButton/GlassNavBar 的 Java 文件，必须手动加 `import com.gjr.glassbutton.*;` |
-| 36 | `setBackgroundBlurRadius()` 调用闪退 DecorView null | 在 `setContentView` 之前调用 | 必须在 `setContentView(root)` 之后调用，此时 DecorView 才初始化完成 |
-| 37 | 真高斯模糊（`setBackgroundBlurRadius`）几乎没效果 | 只能模糊 Window 背后（桌面），不能模糊 Activity 内部内容 | 放弃真高斯模糊，用半透明深色渐变模拟磨砂效果（§3.6.1） |
+| 36 | LSPosed 模块更新后重启，整个模块失效（hook 不加载） | `assets/xposed_init` 写的入口类与 MainHook 实际包名不一致（常见于包名迁移后忘改，如 `com.example.xxx` → `io.github.xxx`） | `assets/xposed_init` 内容必须 = MainHook 真实全限定名（如 `io.github.gjr787878.ramstatusbar.MainHook`）；改包名必须同步改它；验证 APK 内 `unzip -p app.apk assets/xposed_init` |
+| 37 | LSPosed 日志报 `Failed to load class 旧包名.MainHook`，但 APK 里没有这个类 | 设备/数据库残留旧包名模块记录，或组件库旧缓存 | ① 卸载残留的旧包名模块（设置→应用→旧包名）；② LSPosed 模块关闭再启用触发重新扫描；③ 确认 `xposed_init` 已同步（§6 #36） |
 | 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
 
 ---
@@ -632,6 +630,19 @@ public class MainActivity extends AppCompatActivity {
 | UI 不对 | 对照 §3.6 胶囊规范，逐条检查 |
 | 导航栏遮挡 | 检查 padding 是不是设在 ScrollView 上 |
 | LSPosed 搜不到 | 检查 SUMMARY/SCOPE/SOURCE_URL/ADDITIONAL_AUTHORS 四个文件有没有 |
+
+---
+
+## 变更日志
+
+> 每次更新手册后在此追加一行，记录改了什么、为什么（便于回看演进与排查"手册是不是记错了"）。
+
+| 日期 | 版本 | 变更 |
+|---|---|---|
+| 2026-09-23 | 1.5.4 相关 | 新增 §1.3.1 LSPosed 模块仓库发布实战（镜像仓库双动作 + bot 验证）|
+| 2026-09-23 | — | 修正导航栏磨砂参数统一为**上白下透** `0xF06A6A72`→`0x882C2C2E`（§3.6.1 / §0.5 #11 / §6 #30 同步，SKILL.md 缓存一并纠正）|
+| 2026-09-23 | — | 新增 §6 #36 xposed_init 入口类同步、#37 旧包名模块残留；合并原 #26/#36/#37 真模糊条目 |
+| 2026-09-23 | — | 新增 §0.5 硬规则 #12（xposed_init 必须 = MainHook 实际包名）|
 
 ---
 
