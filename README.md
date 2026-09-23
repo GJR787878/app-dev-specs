@@ -95,7 +95,7 @@
 ### 1.3.1 LSPosed 模块仓库（modules.lsposed.org）发布实战
 LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/{applicationId}`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
 
-发布新版本必须**两步都做**（只做一步，索引不更新）：
+**发布新版本必须两步都做**（只做一步，索引不更新）：
 1. **同步元数据文件**到镜像仓库 main 分支：
    - `latest_version.txt`：纯版本号（如 `1.5.4`），无换行问题
    - `README.md`：从主仓库同步最新内容（功能说明会显示在索引详情页）
@@ -105,9 +105,27 @@ LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Mod
    - name：`v{versionName}`；body：changelog（不能为空）
    - **必须上传 APK asset**：从主仓库 Release 下载同款 APK，POST 到 releases/{id}/assets
 
-发完 release，官方 bot 自动触发 `Xposed-Modules-Repo/modules` 的 tag workflow 验证 APK（看 Actions 确认 success）。索引站点随后重建，README 承诺 5 分钟内显示，实测可能有分钟级~小时级延迟；验证抓 `https://modules.lsposed.org/module/{包名}` 页面或直接抓镜像仓库 releases API。
+**bot 自动验证机制**（发布后自动触发 `Xposed-Modules-Repo/modules` 的 tag workflow）：
+- bot 下载 APK 并解析 `AndroidManifest.xml`，读取真实 `versionCode` / `versionName`
+- 要求 APK 是合法 Xposed 模块（含 `assets/xposed_init` 或 `META-INF/xposed/module.prop`）
+- 计算 `{versionCode}-{versionName}` 与 release 现有 tag 比对：**一致则直接成功**（无操作）；不一致则改 tag 指向孤儿 commit；任何验证失败会把 release 置为 **draft**（从索引消失）
+- 在 Actions 里确认对应 workflow 为 `success`；若为 failure，检查镜像 release 是否被置为 draft（需手动重新发布）
 
-**血泪教训**：v1.5.0 只同步了文件、没在镜像仓库发 Release → 索引下载按钮长期卡在 `28-1.4.15`；补发 `36-1.5.4` Release + APK 后 bot 立刻确认。发布完必须在两处都核对 Latest。
+**索引站构建与缓存（重要，勿被误导）**：
+- 索引站点（Cloudflare Pages）在发布后重建，README 承诺 5 分钟内显示，实测可能分钟级~小时级
+- **搜索引擎快照、浏览页（page/N）、`web_fetch` 抓取结果可能是旧缓存**，显示旧版本不代表发布失败
+- **验证必须 curl 实时直连**模块详情页，同时确认两点：
+  1. `Latest Release` 区块的版本 = 新版本
+  2. 页面含 `releases/download/{tag}/xxx.apk` 下载链接
+  ```bash
+  curl -fsSL "https://modules.lsposed.org/module/{包名}" | grep -o 'releases/tag/{versionCode}-{versionName}\|releases/download/{versionCode}-{versionName}'
+  ```
+- 镜像 release 用 API 核对 `draft=false` 且 assets 非空：`curl -fsS "https://api.github.com/repos/Xposed-Modules-Repo/{包名}/releases/tags/{tag}"`
+
+**血泪教训**：
+- v1.5.0 只同步了文件、没在镜像仓库发 Release → 索引下载按钮长期卡在 `28-1.4.15`；补发 `36-1.5.4` Release + APK 后 bot 立刻确认。
+- 曾误判"索引没更新"：`web_fetch`/搜索快照返回旧缓存（显示 v1.4.16），curl 实时直连确认 Latest 已是 v1.5.4——**以 curl 实时结果为准**。
+- 发布完必须在两处核对：镜像仓库 release（draft=false + APK）+ 索引页 Latest（curl 实时）。
 
 ---
 ## 2. 构建与 CI（无本地环境时）
@@ -420,6 +438,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 36 | LSPosed 模块更新后重启，整个模块失效（hook 不加载） | `assets/xposed_init` 写的入口类与 MainHook 实际包名不一致（常见于包名迁移后忘改，如 `com.example.xxx` → `io.github.xxx`） | `assets/xposed_init` 内容必须 = MainHook 真实全限定名（如 `{applicationId}.MainHook`）；改包名必须同步改它；验证 APK 内 `unzip -p app.apk assets/xposed_init` |
 | 37 | LSPosed 日志报 `Failed to load class 旧包名.MainHook`，但 APK 里没有这个类 | 设备/数据库残留旧包名模块记录，或组件库旧缓存 | ① 卸载残留的旧包名模块（设置→应用→旧包名）；② LSPosed 模块关闭再启用触发重新扫描；③ 确认 `xposed_init` 已同步（§6 #36） |
 | 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
+| 39 | LSPosed 索引页"看似没更新"，Latest 还是旧版 | 搜索引擎快照 / `web_fetch` / 浏览页走了 CDN 旧缓存 | 用 curl 实时直连 `https://modules.lsposed.org/module/{包名}`，确认 Latest Release = 新版本且含 `releases/download/{tag}/xxx.apk`；镜像 release 用 API 核对 `draft=false`（§1.3.1） |
 
 ---
 
@@ -656,6 +675,7 @@ public class MainActivity extends AppCompatActivity {
 | 2026-09-23 | — | 新增 §0.5 硬规则 #12（xposed_init 必须 = MainHook 实际包名）|
 | 2026-09-23 | — | GlassButtons 升级 v1.0.5（GlassNavBar 磨砂参数上白下透），手册 §8 / SKILL.md 引用版本同步 |
 | 2026-09-23 | — | 通用性检查：项目名/具体包名改为占位符（§1.3.1、§3.6、§8、§9.2 实测去项目名）；§0.5 占位符清单表格化 |
+| 2026-09-23 | — | §1.3.1 LSPosed 发布优化：补 bot 验证机制（APK 解析 versionCode/versionName、失败置 draft）、CDN 缓存陷阱、curl 实时验证方法；§6 新增 #39 |
 
 ---
 
