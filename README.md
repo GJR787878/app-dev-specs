@@ -59,7 +59,18 @@
 - **GlassButtons**：毛玻璃组件库，见 §8。
 
 ### 占位符（动手前必须全部替换成真实值）
-`{owner}` / `{repo}`、`{applicationId}` / `{包名}`、`{versionName}` / `{versionCode}`、`{proxy}`、各 `{占位符URL}`。
+| 占位符 | 含义 | 示例 |
+|---|---|---|
+| `{owner}` / `{repo}` | GitHub 用户名 / 仓库名 | `GJR787878` / `RamStatusBar` |
+| `{applicationId}` / `{包名}` | 应用包名（含组件前缀） | `{applicationId}.GlassNavBar` |
+| `{versionName}` / `{versionCode}` | 展示版本 / 内部递增号 | `1.5.4` / `36` |
+| `{version}` | 版本号简写 | tag `v{version}` |
+| `{proxy}` | 镜像/代理基址 | `https://{proxy}/...` |
+| `{timestamp}` / `{ts}` | 防缓存时间戳 | URL 加 `?t={timestamp}` |
+| `{默认分支}` | CI 分支守卫 | `refs/heads/{默认分支}` |
+| `{占位符URL}` | 具体 URL | 见 §4 各表 |
+
+> 动手前全文搜索 `{` 并逐一替换；替换后 `grep '{'` 应只剩代码注释中的花括号。
 
 ---
 
@@ -82,7 +93,7 @@
 - 发布后两处都要核对为 `Latest`。
 
 ### 1.3.1 LSPosed 模块仓库（modules.lsposed.org）发布实战
-LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/io.github.gjr787878.ramstatusbar`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
+LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/{applicationId}`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
 
 发布新版本必须**两步都做**（只做一步，索引不更新）：
 1. **同步元数据文件**到镜像仓库 main 分支：
@@ -236,7 +247,7 @@ LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Mod
 **代码模板：**
 ```java
 // 布局 XML 里放 GlassNavBar
-// <io.github.xxx.GlassNavBar android:id="@+id/bottom_nav" .../>
+// <{applicationId}.GlassNavBar android:id="@+id/bottom_nav" .../>
 
 GlassNavBar nav = findViewById(R.id.bottom_nav);
 nav.addItem(icon1, "导航一");   // icon 是 Drawable，会自动着色
@@ -406,7 +417,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 33 | 改完手册/文件后 raw 链接返回旧内容 | raw.githubusercontent.com CDN 缓存 | 验证用 contents API（GET /contents，实时）或 raw URL 加 `?ts={timestamp}`，不要只信 raw 结果 |
 | 34 | 新项目构建报 AndroidX 相关错误 | 缺 `gradle.properties` 文件 | 新项目必须创建 `gradle.properties`，写入 `android.useAndroidX=true` 和 `android.nonTransitiveRClass=true` |
 | 35 | 用了 GlassButtons 依赖后编译报 `cannot find symbol` | Java 文件没 import | 所有用到 GlassCapsuleButton/GlassRadioButton/GlassNavBar 的 Java 文件，必须手动加 `import com.gjr.glassbutton.*;` |
-| 36 | LSPosed 模块更新后重启，整个模块失效（hook 不加载） | `assets/xposed_init` 写的入口类与 MainHook 实际包名不一致（常见于包名迁移后忘改，如 `com.example.xxx` → `io.github.xxx`） | `assets/xposed_init` 内容必须 = MainHook 真实全限定名（如 `io.github.gjr787878.ramstatusbar.MainHook`）；改包名必须同步改它；验证 APK 内 `unzip -p app.apk assets/xposed_init` |
+| 36 | LSPosed 模块更新后重启，整个模块失效（hook 不加载） | `assets/xposed_init` 写的入口类与 MainHook 实际包名不一致（常见于包名迁移后忘改，如 `com.example.xxx` → `io.github.xxx`） | `assets/xposed_init` 内容必须 = MainHook 真实全限定名（如 `{applicationId}.MainHook`）；改包名必须同步改它；验证 APK 内 `unzip -p app.apk assets/xposed_init` |
 | 37 | LSPosed 日志报 `Failed to load class 旧包名.MainHook`，但 APK 里没有这个类 | 设备/数据库残留旧包名模块记录，或组件库旧缓存 | ① 卸载残留的旧包名模块（设置→应用→旧包名）；② LSPosed 模块关闭再启用触发重新扫描；③ 确认 `xposed_init` 已同步（§6 #36） |
 | 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
 
@@ -538,12 +549,12 @@ public class MainActivity extends AppCompatActivity {
     <!-- 选项一：开关 -->
     <TextView android:text="选项一" android:textColor="#CCCCCC"
         android:textSize="14sp" android:layout_marginBottom="12dp" />
-    <io.github.xxx.GlassCapsuleButton android:id="@+id/sw1"
+    <{applicationId}.GlassCapsuleButton android:id="@+id/sw1"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="关" android:layout_marginBottom="24dp" />
 
     <!-- 底部导航 -->
-    <io.github.xxx.GlassNavBar android:id="@+id/bottom_nav"
+    <{applicationId}.GlassNavBar android:id="@+id/bottom_nav"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginLeft="16dp" android:layout_marginRight="16dp"
         android:layout_marginBottom="16dp" />
@@ -595,7 +606,7 @@ public class MainActivity extends AppCompatActivity {
 - 批量替换包名，`grep` 校验无残留（见 §6 #31）
 - 拷贝后给引用 `R.styleable` 的类补 `import {applicationId}.R;`（R 在主包，不在 widget 子包）
 
-**实测数据（UIdemo2 v1.0.1，2026-09-22）：** 源码拷贝 + release R8（`minifyEnabled true` + `shrinkResources true` + `signingConfig signingConfigs.debug` 保证覆盖安装）后，APK 从 50KB → 31KB（-38%），3 个 dex 合并为 1。无反射代码时 R8 无需额外 keep 规则；混淆后组件类被重命名为 `a/b/c` 但功能保留，可用方法签名特征（`setOnItemSelectedListener`/`setChecked`/`setGlassSelected`）在 dex 中验证。
+**参考实测（2026-09）：** 源码拷贝 + release R8（`minifyEnabled true` + `shrinkResources true` + `signingConfig signingConfigs.debug` 保证覆盖安装）后，APK 从 50KB → 31KB（-38%），3 个 dex 合并为 1。无反射代码时 R8 无需额外 keep 规则；混淆后组件类被重命名为 `a/b/c` 但功能保留，可用方法签名特征（`setOnItemSelectedListener`/`setChecked`/`setGlassSelected`）在 dex 中验证。
 
 ### 9.3 CI 构建交付流程
 
@@ -644,6 +655,7 @@ public class MainActivity extends AppCompatActivity {
 | 2026-09-23 | — | 新增 §6 #36 xposed_init 入口类同步、#37 旧包名模块残留；合并原 #26/#36/#37 真模糊条目 |
 | 2026-09-23 | — | 新增 §0.5 硬规则 #12（xposed_init 必须 = MainHook 实际包名）|
 | 2026-09-23 | — | GlassButtons 升级 v1.0.5（GlassNavBar 磨砂参数上白下透），手册 §8 / SKILL.md 引用版本同步 |
+| 2026-09-23 | — | 通用性检查：项目名/具体包名改为占位符（§1.3.1、§3.6、§8、§9.2 实测去项目名）；§0.5 占位符清单表格化 |
 
 ---
 
