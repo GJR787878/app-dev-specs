@@ -156,6 +156,97 @@ LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Mod
 - 生成**固定 keystore**，口令默认值写在 `build.gradle` 顶部、CI 用 secret 注入。
 - 本地与 CI 用同一 keystore，保证覆盖安装/升级不报签名冲突。
 
+### 2.4 完整发版流程（从改版本号到 LSPosed 索引可见）
+
+> 这是标准发版 SOP，任何新模块照搬即可。**缺一不可。**
+
+#### 2.4.1 workflow 必须同时配 branches + tags 触发
+
+`.github/workflows/build.yml` 的 `on.push` 必须同时包含：
+
+```yaml
+on:
+  push:
+    branches: [ main ]
+    paths-ignore: [ 'latest_version.txt' ]   # 避免版本文件自提交死循环
+    tags: [ 'v*' ]                            # ← 漏了这个，打 tag 不编译！
+  workflow_dispatch:
+```
+
+**血泪教训**：DRS 之前只配了 branches，打 `v2.22` tag 后 Actions 根本不触发，release 没自动创建，只能手动下载 artifact 补。新模块 workflow **必须照抄上面这三行**。
+
+#### 2.4.2 tag 触发时自动创建 Release
+
+workflow 结尾必须加这两步（条件是 tag）：
+
+```yaml
+      # 仅当打 tag（v*）时：打包 + 自动创建 Release
+      - name: Package APK (tag only)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk ./MyApp-${{ github.ref_name }}.apk
+
+      - name: Create GitHub Release (tag only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: MyApp ${{ github.ref_name }}
+          files: MyApp-${{ github.ref_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**如果缺这步**：打 tag 只编译不发 release，你就得手动下载 artifact 再 API 创建 release（DRS v2.22 就是这么补的）。
+
+#### 2.4.3 发版操作命令清单
+
+```bash
+# 1. 改版本号（versionCode +1，versionName 按语义化 +修订号）
+sed -i 's/versionCode 36/versionCode 37/; s/versionName "1.5.4"/versionName "1.5.5"/' app/build.gradle
+
+# 2. push main（触发 CI 编译，确认构建成功）
+git add app/build.gradle
+git commit -m "版本升级 1.5.5 (37)"
+git push origin main
+
+# 3. 打 tag 并推送（触发自动 release）
+git tag v1.5.5
+git push origin v1.5.5
+
+# 4. 等 2-3 分钟，确认 release 创建
+#    浏览器看 https://github.com/{owner}/{repo}/releases
+#    或 API: curl -fsS https://api.github.com/repos/{owner}/{repo}/releases/tags/v1.5.5
+
+# 5. 下载 APK（从主仓库 release）
+curl -fsSL -L -o app.apk \
+  https://github.com/{owner}/{repo}/releases/download/v1.5.5/app-debug.apk
+
+# 6. 在 LSPosed 镜像仓库发 release（tag 格式: {versionCode}-{versionName}）
+TOKEN=xxx  # git credential 拿
+curl -fsSL -X POST -H "Authorization: token $TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  https://api.github.com/repos/Xposed-Modules-Repo/{包名}/releases \
+  -d '{"tag_name":"37-1.5.5","name":"37-1.5.5","body":"v1.5.5","draft":false,"prerelease":false}'
+
+# 7. 上传 APK 到镜像 release（替换 release_id）
+curl -fsSL -X POST -H "Authorization: token $TOKEN" \
+  -H "Content-Type: application/vnd.android.package-archive" \
+  --data-binary @app.apk \
+  "https://uploads.github.com/repos/Xposed-Modules-Repo/{包名}/releases/{release_id}/assets?name=app.apk"
+
+# 8. 等 bot 索引（几分钟~几十分钟），curl 验证
+curl -fsSL "https://modules.lsposed.org/module/{包名}" | grep '37-1.5.5'
+```
+
+#### 2.4.4 发版后自检清单
+
+- [ ] 主仓库 release 存在且 `Latest`，APK 已上传
+- [ ] 主仓库 APK 签名与固定 keystore 一致（CI 日志 SIGNATURE OK）
+- [ ] 镜像仓库 release `draft=false` 且 assets 非空
+- [ ] 镜像仓库 Actions 里 bot workflow 为 `success`
+- [ ] curl 实时访问索引页能看到新版本号
+- [ ] 手机 LSPosed Manager 仓库页搜模块名能看到新版本
+
 ---
 
 ## 3. UI 通用规范
