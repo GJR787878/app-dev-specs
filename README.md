@@ -439,6 +439,8 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 37 | LSPosed 日志报 `Failed to load class 旧包名.MainHook`，但 APK 里没有这个类 | 设备/数据库残留旧包名模块记录，或组件库旧缓存 | ① 卸载残留的旧包名模块（设置→应用→旧包名）；② LSPosed 模块关闭再启用触发重新扫描；③ 确认 `xposed_init` 已同步（§6 #36） |
 | 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
 | 39 | LSPosed 索引页"看似没更新"，Latest 还是旧版 | 搜索引擎快照 / `web_fetch` / 浏览页走了 CDN 旧缓存 | 用 curl 实时直连 `https://modules.lsposed.org/module/{包名}`，确认 Latest Release = 新版本且含 `releases/download/{tag}/xxx.apk`；镜像 release 用 API 核对 `draft=false`（§1.3.1） |
+| 40 | 读取应用列表为空 / 只读到 1 个应用 | Android 11+ 分区存储默认隐藏其他应用 | Manifest 必须加 `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />`，否则 `getInstalledApplications()` 只返回自己 |
+| 41 | 检测目录存在性不准，明明目录存在却报缺失 | Android 11+ Scoped Storage 限制普通应用访问 `/sdcard/Android/data/`，`File.exists()` 返回 false | 涉及检测/操作 `Android/data` 目录的功能，必须用 Root 权限 `su -c "if [ -d ... ]"` 执行，不能用普通 Java File API |
 
 ---
 
