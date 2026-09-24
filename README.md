@@ -682,6 +682,8 @@ public class MainActivity extends AppCompatActivity {
 | 2026-09-23 | — | GlassButtons 升级 v1.0.5（GlassNavBar 磨砂参数上白下透），手册 §8 / SKILL.md 引用版本同步 |
 | 2026-09-23 | — | 通用性检查：项目名/具体包名改为占位符（§1.3.1、§3.6、§8、§9.2 实测去项目名）；§0.5 占位符清单表格化 |
 | 2026-09-23 | — | §1.3.1 LSPosed 发布优化：补 bot 验证机制（APK 解析 versionCode/versionName、失败置 draft）、CDN 缓存陷阱、curl 实时验证方法；§6 新增 #39 |
+| 2026-09-24 | — | §6 新增 #40（读取应用列表需 QUERY_ALL_PACKAGES）、#41（Android/data 目录检测必须用 Root）|
+| 2026-09-24 | — | 通用性优化：§1.3.1 标注仅 LSPosed 模块需要、§4 标注可选功能、§6 #40-41 加适用场景 |
 
 ---
 
