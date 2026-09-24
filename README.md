@@ -247,6 +247,14 @@ curl -fsSL "https://modules.lsposed.org/module/{包名}" | grep '37-1.5.5'
 - [ ] curl 实时访问索引页能看到新版本号
 - [ ] 手机 LSPosed Manager 仓库页搜模块名能看到新版本
 
+**硬规则：必须等索引站确认 200 后才能结束任务并给用户链接。** 不能提前结束说"等几分钟就好"。等待期间主动轮询（每 1-2 分钟 curl 一次），直到 `curl -o /dev/null -w "%{http_code}" https://modules.lsposed.org/module/{包名}` 返回 200 且版本号正确。
+
+**常见原因排查**（索引 404 或搜不到时）：
+- 镜像仓库有旧的 draft release → 删掉
+- bot workflow 失败 → 看日志找原因
+- Cloudflare Pages 缓存 → 等 10-30 分钟重建
+- APK 缺 `assets/xposed_init` → bot 拒绝收录
+
 ---
 
 ## 3. UI 通用规范
