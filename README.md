@@ -93,6 +93,9 @@
 - 发布后两处都要核对为 `Latest`。
 
 ### 1.3.1 LSPosed 模块仓库（modules.lsposed.org）发布实战
+
+> **仅 LSPosed/Xposed 模块需要，普通 app 跳过本节。**
+
 LSPosed 官方索引 **不从自有仓库读数据**，数据源是 **Xposed-Modules-Repo 组织下的镜像仓库，仓库名 = applicationId**（如 `Xposed-Modules-Repo/{applicationId}`）。作者对镜像仓库有写权限，直接用 GitHub API 操作（contents PUT + releases POST）。
 
 **发布新版本必须两步都做**（只做一步，索引不更新）：
@@ -337,9 +340,10 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 
 ---
 
-## 4. 通用功能实现要点（以 Android 为例）
+## 4. 内置更新功能实现（可选，仅需要自动更新的 app 参考）
 
-> 本节是**「检测 → 下载 → 安装」完整流程**，新项目直接照此实现；各通道 URL 用 `{占位符}` 换成实际值。
+> **仅当 app 需要内置更新检测时参考本节，不是必选功能。** 不需要自动更新的 app 可以跳过整章。
+> 本节是「检测 → 下载 → 安装」完整流程，新项目直接照此实现；各通道 URL 用 `{占位符}` 换成实际值。
 
 ### 4.1 内置更新：触发与整体流程
 - **触发时机**：应用启动后**异步检测**（不阻塞首屏）；另可在设置页提供「检查更新」手动入口。
@@ -439,8 +443,8 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 37 | LSPosed 日志报 `Failed to load class 旧包名.MainHook`，但 APK 里没有这个类 | 设备/数据库残留旧包名模块记录，或组件库旧缓存 | ① 卸载残留的旧包名模块（设置→应用→旧包名）；② LSPosed 模块关闭再启用触发重新扫描；③ 确认 `xposed_init` 已同步（§6 #36） |
 | 38 | 弹窗选项用原生 RadioButton，不是胶囊样式 | 直接用了 `android.widget.RadioButton` | 弹窗内单选选项必须用 `GlassRadioButton`，与主界面胶囊风格统一 |
 | 39 | LSPosed 索引页"看似没更新"，Latest 还是旧版 | 搜索引擎快照 / `web_fetch` / 浏览页走了 CDN 旧缓存 | 用 curl 实时直连 `https://modules.lsposed.org/module/{包名}`，确认 Latest Release = 新版本且含 `releases/download/{tag}/xxx.apk`；镜像 release 用 API 核对 `draft=false`（§1.3.1） |
-| 40 | 读取应用列表为空 / 只读到 1 个应用 | Android 11+ 分区存储默认隐藏其他应用 | Manifest 必须加 `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />`，否则 `getInstalledApplications()` 只返回自己 |
-| 41 | 检测目录存在性不准，明明目录存在却报缺失 | Android 11+ Scoped Storage 限制普通应用访问 `/sdcard/Android/data/`，`File.exists()` 返回 false | 涉及检测/操作 `Android/data` 目录的功能，必须用 Root 权限 `su -c "if [ -d ... ]"` 执行，不能用普通 Java File API |
+| 40 | （仅需要读取应用列表时）读取应用列表为空 / 只读到 1 个应用 | Android 11+ 分区存储默认隐藏其他应用 | Manifest 必须加 `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />`，否则 `getInstalledApplications()` 只返回自己 |
+| 41 | （仅需要检测/操作 Android/data 目录时）检测目录存在性不准，明明目录存在却报缺失 | Android 11+ Scoped Storage 限制普通应用访问 `/sdcard/Android/data/`，`File.exists()` 返回 false | 涉及检测/操作 `Android/data` 目录的功能，必须用 Root 权限 `su -c "if [ -d ... ]"` 执行，不能用普通 Java File API |
 
 ---
 
