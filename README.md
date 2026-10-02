@@ -544,6 +544,9 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 39 | LSPosed 索引页"看似没更新"，Latest 还是旧版 | 搜索引擎快照 / `web_fetch` / 浏览页走了 CDN 旧缓存 | 用 curl 实时直连 `https://modules.lsposed.org/module/{包名}`，确认 Latest Release = 新版本且含 `releases/download/{tag}/xxx.apk`；镜像 release 用 API 核对 `draft=false`（§1.3.1） |
 | 40 | （仅需要读取应用列表时）读取应用列表为空 / 只读到 1 个应用 | Android 11+ 分区存储默认隐藏其他应用 | Manifest 必须加 `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />`，否则 `getInstalledApplications()` 只返回自己 |
 | 41 | （仅需要检测/操作 Android/data 目录时）检测目录存在性不准，明明目录存在却报缺失 | Android 11+ Scoped Storage 限制普通应用访问 `/sdcard/Android/data/`，`File.exists()` 返回 false | 涉及检测/操作 `Android/data` 目录的功能，必须用 Root 权限 `su -c "if [ -d ... ]"` 执行，不能用普通 Java File API |
+| 42 | 悬浮导航背后是黑块、玻璃没透出内容 | 内容容器被底部 padding/缩短，导航背后没有内容，只剩根布局黑底 | 内容全屏铺到导航背后（外层 bottom padding=0）；避让最后一项只给**内层交互层** padding，并保证有全屏背景层（§10.1，细化 #24） |
+| 43 | 改 GlassNavBar 高/宽，直接设 LayoutParams 无效 | `onMeasure` 横向强制高度=mHeightDp、竖排强制宽度=mSideWidthDp | 用 `setHeightDp()` / `setSideWidthDp()`，不要改 LayoutParams（§10.2） |
+| 44 | modules.lsposed.org 全新/刚更新模块页短暂 404 | Cloudflare Pages（primer+D1）部署延迟，索引器 success ≠ 页面可见 | 等下一轮重建；用同批次其他模块对照判断；路径带尾斜杠、curl 加 -L（§10.3） |
 
 ---
 
@@ -768,6 +771,77 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
+## 10. 实战复盘：ScreenshotX 悬浮玻璃导航 + LSPosed 发布（2026-10）
+
+> 本节是一次完整改动的经验沉淀，结论可直接复用；细节仍以 §3.6 / §3.6.1 / §1.3.1 / §8 为准，本节只补它们没写清的点。
+
+### 10.1 悬浮导航背后的"黑块"：根因与正确结构
+
+**现象**：GlassNavBar 悬浮后，导航背后是一块纯黑矩形，玻璃没有透出内容。
+
+**根因**：内容容器被"缩短"了——给内容列设置了较大的底部 padding（或内容区高度没铺到屏幕底），导航背后那片区域没有任何内容渲染，只剩根布局的纯黑底，半透明玻璃透出来的自然就是黑块。
+
+**正确结构（照 GlassButtons v1.0.5 官方 demo）：**
+```
+FrameLayout root（黑底）
+├── 内容：ScrollView / 内容容器 = MATCH_PARENT，全屏铺满（包括导航背后）  ← 关键
+└── GlassNavBar：悬浮在内容之上（手机 BOTTOM|CENTER_HORIZONTAL；平板 LEFT|CENTER_VERTICAL）
+```
+- **外层内容容器不要用底部 padding 预留黑区**（手机端让内容直接铺到屏幕底，外层 bottom padding = 0）。
+- 又要保证"最后一个可交互项不被导航永久挡住"时，用 demo 的**两层结构**：
+  - 一层**全屏背景层**（无 padding，始终铺到导航背后，导航玻璃永远透出它）；
+  - 一层**交互层**，只在这层加底部 padding（demo 用 120dp），让最后一项能滚过导航。
+- 单 LinearLayout 的设置页：让 ScrollView 与其内容 full-bleed 到导航背后；内容足够长时滚动即可见穿透。
+- 本条是对 §6 #24 的细化：#24 解决"最后一项被挡"，但**避让用的 padding 不能让导航背后变成空白黑区**——先保证全屏内容，再做内层避让。
+
+### 10.2 直接用 release 组件，不要手写仿制
+
+- **组件库已经发布 release（如 GlassButtons v1.0.5）时，直接用组件自带样式，禁止在 app 内手写 GradientDrawable 去"仿制"玻璃/导航背景。** 手写版几乎必然和正式效果不一致（颜色、层数、圆角、渐变方向）。
+- 不确定正确用法时，**读该版本 tag 里的官方 demo MainActivity**，照它的根布局、悬浮 gravity、边距、padding 设在哪个视图来写，不要凭规范文字或记忆猜。
+
+**GlassNavBar 纯图标 / 改尺寸（不改库即可做到）：**
+- 组件没有"纯图标"的 `addItem`，但可在 `addItem(icon, label)` 之后遍历内部视图树，把文字 `GONE`：
+```java
+ViewGroup inner = (ViewGroup) nav.findViewWithTag("glass_nav_inner");
+for (int i = 0; i < inner.getChildCount(); i++) {
+    ViewGroup item = (ViewGroup) inner.getChildAt(i);
+    for (int j = 0; j < item.getChildCount(); j++)
+        if (item.getChildAt(j) instanceof TextView)
+            item.getChildAt(j).setVisibility(View.GONE);
+}
+```
+- 改尺寸用 setter：`setHeightDp()`（横向导航高）、`setSideWidthDp()`（竖排侧栏宽）、`setCornerRadius()`。
+- **注意：直接设导航 LayoutParams 的宽/高无效**——`onMeasure` 在横向强制高度 = `mHeightDp`、竖排强制宽度 = `mSideWidthDp`，必须用上面的 setter。
+- 经验：导航**默认粗细（高 76dp）实际更好用**；做薄（48dp）后图标虽能放下，但点击热区与视觉稳重感下降。无明确必要不要改默认高度。
+
+### 10.3 索引器校验细节 + modules.lsposed.org 部署延迟
+
+- 官方索引器（`Xposed-Modules-Repo/modules`，master 分支 `src/index.ts` + tag.yml）在镜像 release 发布后：
+  - 下载 APK，解析 `AndroidManifest.xml`，取真实 `versionCode`/`versionName`，并校验是否为合法 Xposed 模块（`assets/xposed_init` 或 `META-INF/xposed/module.prop` 等）。
+  - 算出 `{versionCode}-{versionName}`：与 release tag 一致 → 直接成功；不一致 → 建孤儿 commit tag 并 PATCH release 的 tag；**任何校验失败 → 把 release 置为 draft（从索引消失）**。
+- **索引器 success ≠ modules.lsposed.org 页面立即可见**：
+  - 站点由 Cloudflare Pages（`primer` 分支 + D1，外部 webhook/定时构建）部署，存在**分钟级~小时级延迟**；**全新模块、刚更新的模块在这段时间页面可能直接 404**，并非被拒。
+  - 判断方法：同时段看几个**其他刚更新的模块**——若新模块普遍 404、老模块 200，就是全局部署进度问题，等下一轮重建即可，别反复重发。
+  - 模块页正确路径是 `/module/{包名}/`（**带尾斜杠**；不带会 308 重定向，curl 记得 `-L`）。
+  - 数据接口 `/modules.json`、`/module/{包名}.json` 受 Cloudflare Access 保护，未带 Access 头会 **403**，属正常，别当成接口没了。
+  - 最终仍以 curl 实时直连 + 镜像 release `draft=false`、assets 非空为准（§1.3.1）。
+
+### 10.4 本次环境 / 工具死路（复现时直接换通道）
+
+| 现象 | 处理 |
+|---|---|
+| github-remote MCP 的文件类工具（get/list/search contents、commits 等）返回 `-32005 rejected by transport`，只有 get_me 可用 | 不要反复重试；改用 PAT 直接调 GitHub REST API（contents PUT / releases POST / assets POST） |
+| 环境自带 `GITHUB_TOKEN` 对 api.github.com 返回 401、`gh` CLI 未登录 | 用用户提供的有效 PAT；令牌只放请求头，不写进提交、日志与最终回复 |
+| `/tmp` 下的工作文件在轮次间被清空 | 工作文件放持久目录（项目 `work/` 下），不要依赖 /tmp |
+| `web_fetch` 抓 github.com 页面被 robots 拦截/返回空壳 | 提交历史用 `https://github.com/{owner}/{repo}/commits/{branch}.atom`；数据走 api.github.com |
+| raw.githubusercontent.com 返回旧内容 | 用认证后的 contents API GET 复核（§6 #33） |
+
+### 10.5 沟通：视觉词先确认是哪个维度
+
+- "半透明 / 做薄 / 做细 / 收窄 / 变窄"这类词，先确认指的是**横向宽度**还是**高度（厚度）**再动手。本次"变窄"被实现成缩横向宽度，实际诉求是"做薄（降高度、横向保持铺满）"，方向反了。
+- 拿不准就一句话确认（"是降低高度，还是减少横向宽度？"），比返工成本低。
+
+---
 ## 变更日志
 
 > 每次更新手册后在此追加一行，记录改了什么、为什么（便于回看演进与排查"手册是不是记错了"）。
@@ -783,6 +857,7 @@ public class MainActivity extends AppCompatActivity {
 | 2026-09-23 | — | §1.3.1 LSPosed 发布优化：补 bot 验证机制（APK 解析 versionCode/versionName、失败置 draft）、CDN 缓存陷阱、curl 实时验证方法；§6 新增 #39 |
 | 2026-09-24 | — | §6 新增 #40（读取应用列表需 QUERY_ALL_PACKAGES）、#41（Android/data 目录检测必须用 Root）|
 | 2026-09-24 | — | 通用性优化：§1.3.1 标注仅 LSPosed 模块需要、§4 标注可选功能、§6 #40-41 加适用场景 |
+| 2026-10-03 | — | 新增 §10 实战复盘（ScreenshotX 悬浮导航黑块根因/直接用 release 组件不手写/索引器校验与站点部署延迟/工具死路/视觉词确认维度）；§6 新增 #42-44 |
 
 ---
 
