@@ -414,6 +414,11 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 **说明：**
 真正的高斯模糊（背景内容模糊）需要 Android 12+ 且需要特殊窗口配置。目前用**半透明深色渐变**模拟磨砂玻璃质感，背景内容隐约可见但不刺眼。
 
+**悬浮导航的内容避让（通用公式，详见 §10.1）：**
+- ScrollView 与其外层保持 full-bleed（底部 padding=0，导航背后才有内容、不出现黑块）。
+- ScrollView **内部内容容器**加底部 padding = `导航高 + 导航底边距 + 间隙`，默认 76+24+12 = **112dp**，让最后一项能滚到导航上方。
+- 平板左侧竖排导航时，把同样的量加在内部内容的 `left padding`。
+
 ### 3.7 二级界面（子页面）的美术风格与逻辑
 
 > 二级界面 = 从主界面/标签页点进去的独立设置页（如"背景颜色""时间设置""应用选择器"）。**必须与主界面同一套美术语言，禁止另起风格。**
@@ -544,7 +549,7 @@ nav.setOnItemSelectedListener(index -> { /* 切换页面 */ });
 | 39 | LSPosed 索引页"看似没更新"，Latest 还是旧版 | 搜索引擎快照 / `web_fetch` / 浏览页走了 CDN 旧缓存 | 用 curl 实时直连 `https://modules.lsposed.org/module/{包名}`，确认 Latest Release = 新版本且含 `releases/download/{tag}/xxx.apk`；镜像 release 用 API 核对 `draft=false`（§1.3.1） |
 | 40 | （仅需要读取应用列表时）读取应用列表为空 / 只读到 1 个应用 | Android 11+ 分区存储默认隐藏其他应用 | Manifest 必须加 `<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />`，否则 `getInstalledApplications()` 只返回自己 |
 | 41 | （仅需要检测/操作 Android/data 目录时）检测目录存在性不准，明明目录存在却报缺失 | Android 11+ Scoped Storage 限制普通应用访问 `/sdcard/Android/data/`，`File.exists()` 返回 false | 涉及检测/操作 `Android/data` 目录的功能，必须用 Root 权限 `su -c "if [ -d ... ]"` 执行，不能用普通 Java File API |
-| 42 | 悬浮导航背后是黑块、玻璃没透出内容 | 内容容器被底部 padding/缩短，导航背后没有内容，只剩根布局黑底 | 内容全屏铺到导航背后（外层 bottom padding=0）；避让最后一项只给**内层交互层** padding，并保证有全屏背景层（§10.1，细化 #24） |
+| 42 | 悬浮导航背后黑块、或底部按钮被导航挡住 | padding 加错层：加在外层列→黑块；完全不加→最后一项被挡 | 外层/ScrollView 保持 full-bleed（bottom padding=0）；**ScrollView 内部内容容器**加 bottom padding = 导航高+底边距+间隙（默认 76+24+12=**112dp**），平板换成 left padding（§10.1、§3.6.1，细化 #24） |
 | 43 | 改 GlassNavBar 高/宽，直接设 LayoutParams 无效 | `onMeasure` 横向强制高度=mHeightDp、竖排强制宽度=mSideWidthDp | 用 `setHeightDp()` / `setSideWidthDp()`，不要改 LayoutParams（§10.2） |
 | 44 | modules.lsposed.org 全新/刚更新模块页短暂 404 | Cloudflare Pages（primer+D1）部署延迟，索引器 success ≠ 页面可见 | 等下一轮重建；用同批次其他模块对照判断；路径带尾斜杠、curl 加 -L（§10.3） |
 
@@ -787,12 +792,16 @@ FrameLayout root（黑底）
 ├── 内容：ScrollView / 内容容器 = MATCH_PARENT，全屏铺满（包括导航背后）  ← 关键
 └── GlassNavBar：悬浮在内容之上（手机 BOTTOM|CENTER_HORIZONTAL；平板 LEFT|CENTER_VERTICAL）
 ```
-- **外层内容容器不要用底部 padding 预留黑区**（手机端让内容直接铺到屏幕底，外层 bottom padding = 0）。
-- 又要保证"最后一个可交互项不被导航永久挡住"时，用 demo 的**两层结构**：
-  - 一层**全屏背景层**（无 padding，始终铺到导航背后，导航玻璃永远透出它）；
-  - 一层**交互层**，只在这层加底部 padding（demo 用 120dp），让最后一项能滚过导航。
-- 单 LinearLayout 的设置页：让 ScrollView 与其内容 full-bleed 到导航背后；内容足够长时滚动即可见穿透。
-- 本条是对 §6 #24 的细化：#24 解决"最后一项被挡"，但**避让用的 padding 不能让导航背后变成空白黑区**——先保证全屏内容，再做内层避让。
+- **外层容器 / ScrollView 本身 = full-bleed，底部 padding 为 0**：让 ScrollView 铺满到屏幕底（包括导航背后），导航背后始终有可滚动内容，玻璃透出内容而非黑块。
+- **内层可滚动内容 = 加底部 padding，让最后一项能滚到导航上方**：否则底部的开关/按钮（如"录制系统声音""测试截屏""导出诊断日志"）会被导航永久挡住。padding 必须加在 **ScrollView 内部的内容容器**上，不是外层列、也不是 ScrollView 自身。
+- **通用计算公式（直接套用）：**
+  ```
+  内层 bottom padding = 导航高 + 导航底边距 + 安全间隙
+  ```
+  默认导航高 76dp + 底边距 24dp = 100dp，再加约 12dp 间隙 → **112dp**（ScreenshotX 两面板实测值）。
+- **平板（左侧竖排导航）同理，方向换成左**：内层 `left padding = 侧栏宽 + 侧栏左边距 + 间隙`（侧栏 56dp：56+20+12 ≈ 88dp；侧栏 72dp：72+20+12 ≈ 104dp）。
+- 等价的 demo 两层结构：全屏背景层（无 padding，铺到导航背后）+ 交互层（带底部 padding，最后一项可滚过导航）。
+- 本条细化 §6 #24 / #42：避让 padding 必须落在**内层内容**，外层与 ScrollView 保持 full-bleed，才能同时做到"无黑块"和"最后一项不被挡"。
 
 ### 10.2 直接用 release 组件，不要手写仿制
 
@@ -858,6 +867,7 @@ for (int i = 0; i < inner.getChildCount(); i++) {
 | 2026-09-24 | — | §6 新增 #40（读取应用列表需 QUERY_ALL_PACKAGES）、#41（Android/data 目录检测必须用 Root）|
 | 2026-09-24 | — | 通用性优化：§1.3.1 标注仅 LSPosed 模块需要、§4 标注可选功能、§6 #40-41 加适用场景 |
 | 2026-10-03 | — | 新增 §10 实战复盘（ScreenshotX 悬浮导航黑块根因/直接用 release 组件不手写/索引器校验与站点部署延迟/工具死路/视觉词确认维度）；§6 新增 #42-44 |
+| 2026-10-03 | — | 悬浮导航内容避让改为通用公式：外层/ScrollView full-bleed（padding=0），ScrollView 内部内容 bottom padding = 导航高+底边距+间隙（默认 **112dp**），平板换 left padding；同步 §3.6.1 / §6 #42 / §10.1 |
 
 ---
 
